@@ -199,7 +199,7 @@ async function collectEvidence(job, dir, stderr, sessionDir) {
   const validation = await exec(KANE, ["evidence", "validate", pack], { cwd: dir, timeoutMs: 60_000 });
   let policyVerdict = null;
   if (job.policyId) {
-    const v = await exec(KANE, ["evidence", "verdict", pack], { cwd: dir, timeoutMs: 60_000 });
+    const v = await exec(KANE, ["evidence", "verdict", pack, "--policy-id", String(job.policyId)], { cwd: dir, timeoutMs: 60_000 });
     policyVerdict = { exit: v.code, output: (v.out || v.err).slice(0, 4000) };
   }
   const prefix = `${job.runId}`;
@@ -216,6 +216,7 @@ async function collectEvidence(job, dir, stderr, sessionDir) {
     console: [],
     devtools: null,
   };
+  if (validation.code !== 0) return evidence; // Never unpack an invalid archive.
   const unpacked = await mkdtemp(join(tmpdir(), "evidence-"));
   try {
     const unzip = await exec("unzip", ["-o", "-q", pack, "-d", unpacked], { timeoutMs: 60_000 });

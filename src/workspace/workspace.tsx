@@ -1,3 +1,4 @@
+import { sampleWorkspace, SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   createContext,
   useCallback,
@@ -28,7 +29,8 @@ export type Page =
   | "billing"
   | "settings"
   | "project"
-  | "theater";
+  | "theater"
+  | "audit";
 export type Run = RunDTO;
 export type Project = ProjectDTO;
 export type Battle = BattleDTO;
@@ -42,7 +44,7 @@ export type Dialog =
   | "environment"
   | null;
 export const pageNames: Record<Page, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Mission Control",
   arena: "Adversarial Arena",
   evidence: "Evidence Vault",
   coverage: "Coverage Map",
@@ -54,6 +56,7 @@ export const pageNames: Record<Page, string> = {
   settings: "Settings",
   project: "Project",
   theater: "Run Theater",
+  audit: "Blueprint audit",
 };
 /** Display names for BATTLE_STATES, in loop order. */
 export const stages = [
@@ -76,24 +79,37 @@ export const battleOpen = (b: Battle) =>
   !["REFEREE_PASS", "PUBLISHED", "BLOCKED_NEEDS_HUMAN"].includes(b.state);
 export const stateLabel = (b: Battle) =>
   battleBlocked(b) ? "Blocked: needs human" : stages[stageIndex(b)];
-export const runActive = (r: Run) => r.status === "queued" || r.status === "running";
+export const runActive = (r: Run) =>
+  r.status === "queued" || r.status === "running";
 
+let readOnlyView = false;
 export async function api<T = unknown>(
   path: string,
   init: { method?: string; json?: unknown } = {},
 ): Promise<T> {
+  if (
+    readOnlyView &&
+    ((init.method && init.method !== "GET") || init.json !== undefined)
+  )
+    throw new Error("This view is read-only until the database reconnects.");
   const res = await fetch(path, {
     method: init.method || (init.json !== undefined ? "POST" : "GET"),
-    headers: init.json !== undefined ? { "content-type": "application/json" } : undefined,
+    headers:
+      init.json !== undefined
+        ? { "content-type": "application/json" }
+        : undefined,
     body: init.json !== undefined ? JSON.stringify(init.json) : undefined,
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok)
-    throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
+    throw new Error(
+      (data as { error?: string }).error || `Request failed (${res.status})`,
+    );
   return data as T;
 }
-export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+export const errorText = (e: unknown) =>
+  e instanceof Error ? e.message : String(e);
 
 /** Browser-only UI preference (which project is selected). Not workspace data. */
 export function useStored<T>(key: string, initial: T) {
@@ -118,8 +134,13 @@ export function useStored<T>(key: string, initial: T) {
 function readRoute() {
   const [raw, query] = location.hash.replace(/^#\/?/, "").split("?");
   return {
-    page: (Object.prototype.hasOwnProperty.call(pageNames, raw) ? raw : "dashboard") as Page,
-    query: Object.fromEntries(new URLSearchParams(query)) as Record<string, string>,
+    page: (Object.prototype.hasOwnProperty.call(pageNames, raw)
+      ? raw
+      : "dashboard") as Page,
+    query: Object.fromEntries(new URLSearchParams(query)) as Record<
+      string,
+      string
+    >,
   };
 }
 type TriggerResult = { mode: string; runId: string; runs?: Run[] };
@@ -137,12 +158,17 @@ function useWorkspaceModel() {
   const refresh = useCallback(async () => {
     try {
       const next = await api<WorkspaceDTO>("/api/workspace");
+      readOnlyView = false;
       setData(next);
       setLoadError("");
       setSyncedAt(Date.now());
       return next;
     } catch (e) {
-      setLoadError(errorText(e));
+      readOnlyView = true;
+      setData((last) => last ?? sampleWorkspace());
+      setLoadError(
+        "Database connection paused. You can browse the read-only workspace while it reconnects.",
+      );
       return null;
     }
   }, []);
@@ -155,15 +181,23 @@ function useWorkspaceModel() {
     projects.find((p) => !p.archived) ||
     null;
   const pid = project?.id;
-  const projectRuns = useMemo(() => runs.filter((r) => r.projectId === pid), [runs, pid]);
-  const projectBattles = useMemo(() => battles.filter((b) => b.projectId === pid), [battles, pid]);
+  const projectRuns = useMemo(
+    () => runs.filter((r) => r.projectId === pid),
+    [runs, pid],
+  );
+  const projectBattles = useMemo(
+    () => battles.filter((b) => b.projectId === pid),
+    [battles, pid],
+  );
   const postmortems = useMemo(
     () => (data?.postmortems ?? []).filter((p) => p.projectId === pid),
     [data, pid],
   );
   const busy =
     runs.some(runActive) ||
-    battles.some((b) => battleOpen(b) && !b.error && Date.now() - b.updatedAt < 15 * 60000);
+    battles.some(
+      (b) => battleOpen(b) && !b.error && Date.now() - b.updatedAt < 15 * 60000,
+    );
 
   useEffect(() => {
     refresh();
@@ -178,7 +212,12 @@ function useWorkspaceModel() {
     name: "",
     email: "",
   };
-  const preferences = (settings.notification_prefs as boolean[]) || [true, true, true, true];
+  const preferences = (settings.notification_prefs as boolean[]) || [
+    true,
+    true,
+    true,
+    true,
+  ];
   const budget = data?.credits.budget ?? 0;
   const consumed = data?.credits.consumed ?? 0;
   const reported = data?.credits.reportedBalance ?? null;
@@ -188,7 +227,13 @@ function useWorkspaceModel() {
   const limit = Math.max(budget, credits, 1);
 
   const inboxEvents = useMemo(() => {
-    const items: { title: string; text: string; page: Page; id?: string; at: number }[] = [];
+    const items: {
+      title: string;
+      text: string;
+      page: Page;
+      id?: string;
+      at: number;
+    }[] = [];
     const failed = projectRuns.find((r) => r.status === "failed");
     const healed = projectRuns.find((r) => r.display === "healed");
     const sealed = projectRuns.find((r) => r.hasEvidence);
@@ -210,8 +255,11 @@ function useWorkspaceModel() {
       });
     if (preferences[2] && sealed)
       items.push({
-        title: "Evidence sealed",
-        text: `${sealed.label}: the evidence pack is in the vault.`,
+        title:
+          sealed.trigger === "sample_replay"
+            ? "Sample trace available"
+            : "Evidence available",
+        text: `${sealed.label}: inspect the ${sealed.trigger === "sample_replay" ? "illustrative trace" : "run evidence"} in the vault.`,
         page: "evidence",
         id: sealed.id,
         at: sealed.completedAt || sealed.at,
@@ -227,7 +275,9 @@ function useWorkspaceModel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectRuns, preferences.join(), credits, budget]);
   const readAt = Number(settings.inbox_read_at) || 0;
-  const inboxRead = !inboxEvents.some((e) => e.page !== "billing" && e.at > readAt);
+  const inboxRead = !inboxEvents.some(
+    (e) => e.page !== "billing" && e.at > readAt,
+  );
 
   useEffect(() => {
     const change = () => {
@@ -270,6 +320,20 @@ function useWorkspaceModel() {
   /** POST /api/kane/trigger, in the project's execution mode unless overridden. */
   async function startRun(body: Record<string, unknown>) {
     if (!project) return false;
+    if (loadError) {
+      if (
+        project.id === SAMPLE_PROJECT_ID &&
+        (body.executionMode || project.mode) === "judge_instant_replay"
+      ) {
+        go("theater", {
+          id: String(body.replayRunId || projectRuns[0]?.id),
+          replay: "1",
+        });
+        return true;
+      }
+      toast("The workspace is read-only until the database reconnects.");
+      return false;
+    }
     try {
       const r = await api<TriggerResult>("/api/kane/trigger", {
         json: { projectId: project.id, executionMode: project.mode, ...body },
@@ -280,8 +344,9 @@ function useWorkspaceModel() {
       const refused = r.runs?.find((x) => x.status === "error");
       toast(
         replay
-          ? "Replaying the sealed NDJSON stream at 5x speed."
-          : refused?.error || "Dispatched to the cloud worker. Streaming Kane CLI events.",
+          ? "Playing the selected timeline at 5× speed."
+          : refused?.error ||
+              "Dispatched to the cloud worker. Streaming Kane CLI events.",
       );
       return true;
     } catch (e) {
@@ -290,8 +355,15 @@ function useWorkspaceModel() {
     }
   }
   /** Runs a mutation, refreshes workspace data, and reports failures as a toast. */
-  async function act<T>(fn: () => Promise<T>, success?: string): Promise<T | null> {
+  async function act<T>(
+    fn: () => Promise<T>,
+    success?: string,
+  ): Promise<T | null> {
     try {
+      if (loadError) {
+        toast("Changes are paused until the database reconnects.");
+        return null;
+      }
       const result = await fn();
       await refresh();
       if (success) toast(success);
@@ -303,16 +375,28 @@ function useWorkspaceModel() {
   }
   const patchProject = (patch: Record<string, unknown>, success?: string) =>
     project
-      ? act(() => api(`/api/projects/${project.id}`, { method: "PATCH", json: patch }), success)
+      ? act(
+          () =>
+            api(`/api/projects/${project.id}`, {
+              method: "PATCH",
+              json: patch,
+            }),
+          success,
+        )
       : Promise.resolve(null);
   const saveSetting = (key: string, value: unknown, success?: string) =>
-    act(() => api("/api/settings", { method: "PUT", json: { key, value } }), success);
+    act(
+      () => api("/api/settings", { method: "PUT", json: { key, value } }),
+      success,
+    );
   const copy = async (text: string, what = "Value") => {
     try {
       await navigator.clipboard.writeText(text);
       toast(`${what} copied to clipboard`);
     } catch {
-      toast("Clipboard unavailable in this browser. Select the text to copy it.");
+      toast(
+        "Clipboard unavailable in this browser. Select the text to copy it.",
+      );
     }
   };
   return {
@@ -355,10 +439,16 @@ function useWorkspaceModel() {
     setSidebarOpen,
   };
 }
-const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceModel> | null>(null);
+const WorkspaceContext = createContext<ReturnType<
+  typeof useWorkspaceModel
+> | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const value = useWorkspaceModel();
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
 }
 export function useWorkspace() {
   const ctx = useContext(WorkspaceContext);
@@ -385,7 +475,11 @@ export function time(at: number) {
 export function stamp(at: number) {
   return new Date(at).toISOString().slice(0, 16).replace("T", " ");
 }
-export function downloadFile(name: string, content: string, type = "application/json") {
+export function downloadFile(
+  name: string,
+  content: string,
+  type = "application/json",
+) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");
   link.href = url;

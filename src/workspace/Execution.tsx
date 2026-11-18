@@ -35,6 +35,7 @@ import { platformNames, scenarioNames, type EventDTO } from "@/lib/types";
 import {
   EvidenceVault,
   EvidenceViewer,
+  readRunDetail,
   completedSteps,
   packName,
   shotFor,
@@ -60,6 +61,7 @@ import {
   battleBlocked,
   duration,
   errorText,
+  downloadFile,
   runActive,
   stageIndex,
   stamp,
@@ -82,7 +84,13 @@ export function ProjectSettings() {
       onSubmit={(e) => {
         e.preventDefault();
         patchProject(
-          { name: name.trim(), branch: branch.trim(), staging, production, previewUrlTemplate: template },
+          {
+            name: name.trim(),
+            branch: branch.trim(),
+            staging,
+            production,
+            previewUrlTemplate: template,
+          },
           "Project configuration saved",
         );
       }}
@@ -136,8 +144,9 @@ export function ProjectSettings() {
         />
       </label>
       <p className="description">
-        Battles and PR gates run against a branch deployment. Use {"{branch}"} where your host
-        puts the branch name; without a template, runs target the staging URL.
+        Battles and PR gates run against a branch deployment. Use {"{branch}"}{" "}
+        where your host puts the branch name; without a template, runs target
+        the staging URL.
       </p>
       <button
         className="btn primary self-start"
@@ -170,7 +179,11 @@ export function ProjectDetail() {
   const filtered = projectRuns.filter(
     (r) =>
       (filter === "all" ||
-        (filter === "review" ? r.review : r.display === filter)) &&
+        (filter === "review"
+          ? r.review
+          : filter === "success"
+            ? r.exitCode === 0
+            : r.display === filter)) &&
       `${r.label} ${r.name} ${r.platform} ${r.testmdPath || ""}`
         .toLowerCase()
         .includes(search.toLowerCase()),
@@ -189,7 +202,10 @@ export function ProjectDetail() {
       return;
     }
     // The server reconciles: unchanged claims keep their trust, removed ones go stale.
-    const ok = await patchProject({ prdMarkdown: text, specFilename: file.name }, "Specification reconciled against the requirement store");
+    const ok = await patchProject(
+      { prdMarkdown: text, specFilename: file.name },
+      "Specification reconciled against the requirement store",
+    );
     if (ok) setSync(false);
   };
   return (
@@ -243,10 +259,20 @@ export function ProjectDetail() {
           {project.repo}
           <ArrowUpRight size={10} />
         </a>
-        <a className="inline-icon mono" href={project.staging} target="_blank" rel="noreferrer">
+        <a
+          className="inline-icon mono"
+          href={project.staging}
+          target="_blank"
+          rel="noreferrer"
+        >
           staging: {project.staging.replace(/^https?:\/\//, "")}
         </a>
-        <a className="inline-icon mono" href={project.production} target="_blank" rel="noreferrer">
+        <a
+          className="inline-icon mono"
+          href={project.production}
+          target="_blank"
+          rel="noreferrer"
+        >
           production: {project.production.replace(/^https?:\/\//, "")}
         </a>
       </div>
@@ -285,9 +311,7 @@ export function ProjectDetail() {
               </button>
               <button onClick={() => switchTab("Coverage")}>
                 <Waypoints />
-                <strong>
-                  {project.coveragePct.toFixed(1)}%
-                </strong>
+                <strong>{project.coveragePct.toFixed(1)}%</strong>
                 <span>Requirement coverage</span>
               </button>
             </div>
@@ -326,6 +350,7 @@ export function ProjectDetail() {
               >
                 {[
                   ["all", "All statuses"],
+                  ["success", "All successful"],
                   ["failed", "Failing runs"],
                   ["passed", "Passed"],
                   ["healed", "Healed"],
@@ -392,8 +417,18 @@ export function ProjectDetail() {
                 onClick={() => go("arena", { id: b.id })}
               >
                 <span className="mono muted">{b.label}</span>
-                <strong>{scenarioNames[b.scenario || ""] || b.mode.replace(/_/g, " ")}</strong>
-                <Tag color={battleBlocked(b) ? "red" : stageIndex(b) >= 5 ? "green" : "cyan"}>
+                <strong>
+                  {scenarioNames[b.scenario || ""] || b.mode.replace(/_/g, " ")}
+                </strong>
+                <Tag
+                  color={
+                    battleBlocked(b)
+                      ? "red"
+                      : stageIndex(b) >= 5
+                        ? "green"
+                        : "cyan"
+                  }
+                >
                   {stateLabel(b)}
                 </Tag>
                 <ChevronRight size={14} />
@@ -411,7 +446,9 @@ export function ProjectDetail() {
           <div className="coverage-summary">
             <Waypoints size={34} className="gold" />
             <h2>
-              {project.covered} of {project.requirements.filter((r) => r.trust !== "stale").length} requirements proven
+              {project.covered} of{" "}
+              {project.requirements.filter((r) => r.trust !== "stale").length}{" "}
+              requirements proven
             </h2>
             <p>
               Inspect requirement relationships and generate specifications for
@@ -432,8 +469,9 @@ export function ProjectDetail() {
         >
           <div className="modal-body form-stack">
             <p className="description">
-              {project.spec ? `Replace ${project.spec} with` : "Upload"} a Markdown PRD or README. List
-              items are indexed as requirements; claims that disappear are marked stale.
+              {project.spec ? `Replace ${project.spec} with` : "Upload"} a
+              Markdown PRD or README. List items are indexed as requirements;
+              claims that disappear are marked stale.
             </p>
             <label className="field">
               Markdown document
@@ -463,12 +501,24 @@ type Stream = "idle" | "live" | "replay";
 const fmt = (at: number) => new Date(at).toISOString().slice(11, 19);
 const brief = (e: EventDTO) => {
   if (e.remark) return e.remark;
-  const rest = Object.fromEntries(Object.entries(e.payload).filter(([k]) => !["type", "v", "ts"].includes(k)));
+  const rest = Object.fromEntries(
+    Object.entries(e.payload).filter(([k]) => !["type", "v", "ts"].includes(k)),
+  );
   return JSON.stringify(rest).slice(0, 320);
 };
 
 export function RunTheater() {
-  const { runs, query, projectRuns, go, startRun, copy, act, refresh } = useWorkspace();
+  const {
+    runs,
+    query,
+    projectRuns,
+    go,
+    startRun,
+    copy,
+    act,
+    refresh,
+    loadError,
+  } = useWorkspace();
   const id = query.id || projectRuns[0]?.id;
   const [detail, setDetail] = useState<RunDetail | null>(null);
   const [events, setEvents] = useState<EventDTO[]>([]);
@@ -486,6 +536,7 @@ export function RunTheater() {
     if (!id) return;
     let cancelled = false;
     let source: EventSource | null = null;
+    const timers: number[] = [];
     setDetail(null);
     setEvents([]);
     setError("");
@@ -493,16 +544,33 @@ export function RunTheater() {
     const finish = () => {
       source?.close();
       setStream("idle");
-      api<RunDetail>(`/api/runs/${id}`).then((d) => {
-        if (cancelled) return;
-        setDetail(d);
-        refresh();
-      });
+      readRunDetail(id, !!loadError)
+        .then((d) => {
+          if (cancelled) return;
+          setDetail(d);
+          refresh();
+        })
+        .catch((e) => {
+          if (!cancelled) setError(errorText(e));
+        });
     };
-    api<RunDetail>(`/api/runs/${id}`)
+    readRunDetail(id, !!loadError)
       .then((d) => {
         if (cancelled) return;
         setDetail(d);
+        if (loadError && d.run.trigger === "sample_replay" && wantsReplay) {
+          setStream("replay");
+          d.events.forEach((event, i) =>
+            timers.push(
+              window.setTimeout(() => {
+                if (cancelled) return;
+                setEvents((old) => [...old, event]);
+                if (i === d.events.length - 1) setStream("idle");
+              }, i * 160),
+            ),
+          );
+          return;
+        }
         const live = runActive(d.run);
         if (!live && !(wantsReplay && d.events.length)) {
           setEvents(d.events);
@@ -512,11 +580,15 @@ export function RunTheater() {
         setEvents(live ? d.events : []);
         setStream(live ? "live" : "replay");
         source = new EventSource(
-          live ? `/api/runs/${id}/stream?after=${d.events.at(-1)?.seq ?? -1}` : `/api/runs/${id}/stream?replay=5`,
+          live
+            ? `/api/runs/${id}/stream?after=${d.events.at(-1)?.seq ?? -1}`
+            : `/api/runs/${id}/stream?replay=5`,
         );
         source.addEventListener("ndjson", (m) => {
           const e = JSON.parse((m as MessageEvent).data) as EventDTO;
-          setEvents((old) => (old.some((x) => x.seq === e.seq) ? old : [...old, e]));
+          setEvents((old) =>
+            old.some((x) => x.seq === e.seq) ? old : [...old, e],
+          );
         });
         source.addEventListener("end", finish);
         source.addEventListener("fault", finish);
@@ -524,14 +596,18 @@ export function RunTheater() {
       .catch((e) => !cancelled && setError(errorText(e)));
     return () => {
       cancelled = true;
+      timers.forEach(window.clearTimeout);
       source?.close();
       setStream("idle");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, replayKey, query.replay]);
+  }, [id, replayKey, query.replay, loadError]);
   useEffect(() => {
     if (stream !== "idle")
-      terminal.current?.scrollTo({ top: terminal.current.scrollHeight, behavior: "smooth" });
+      terminal.current?.scrollTo({
+        top: terminal.current.scrollHeight,
+        behavior: "smooth",
+      });
   }, [events.length, stream]);
 
   if (!id)
@@ -543,20 +619,53 @@ export function RunTheater() {
     );
   if (error) return <Empty title="Run not found" description={error} />;
   const run = detail?.run || runs.find((r) => r.id === id);
-  if (!run) return <Empty title="Loading run" description="Reading the execution ledger." />;
+  if (!run)
+    return (
+      <Empty title="Loading run" description="Reading the execution ledger." />
+    );
 
   const evidence = detail?.evidence ?? null;
   const steps = completedSteps(events);
   const shown = frame !== null ? steps[frame] : steps.at(-1);
   const link = `${location.origin}${location.pathname}#/theater?id=${run.id}&replay=1`;
   const spec = `${run.objective || ""} ${run.testmdPath || ""}`.toLowerCase();
-  const failedText = events.filter((e) => e.stepStatus === "failed").map((e) => e.remark || "").join(" ").toLowerCase();
-  const net = evidence?.devtools?.network as { requests: number; status4xx: number; status5xx: number } | undefined;
-  const con = evidence?.devtools?.console as { messages: number; errors: number; warnings: number } | undefined;
+  const failedText = events
+    .filter((e) => e.stepStatus === "failed")
+    .map((e) => e.remark || "")
+    .join(" ")
+    .toLowerCase();
+  const net = evidence?.devtools?.network as
+    | { requests: number; status4xx: number; status5xx: number }
+    | undefined;
+  const con = evidence?.devtools?.console as
+    | { messages: number; errors: number; warnings: number }
+    | undefined;
   const domains: [typeof Network, string, RegExp, string | null, boolean][] = [
-    [Network, "Network", /network|status code|5xx|http status|request/, net ? `${net.requests} request${net.requests === 1 ? "" : "s"}, ${net.status5xx} 5xx, ${net.status4xx} 4xx` : null, !!net?.status5xx],
-    [Terminal, "Console", /console|exception/, con ? `${con.errors} error${con.errors === 1 ? "" : "s"}, ${con.warnings} warning${con.warnings === 1 ? "" : "s"}` : null, !!con?.errors],
-    [Activity, "Performance", /lcp|largest contentful|layout shift|\bcls\b|\binp\b|ttfb/, null, false],
+    [
+      Network,
+      "Network",
+      /network|status code|5xx|http status|request/,
+      net
+        ? `${net.requests} request${net.requests === 1 ? "" : "s"}, ${net.status5xx} 5xx, ${net.status4xx} 4xx`
+        : null,
+      !!net?.status5xx,
+    ],
+    [
+      Terminal,
+      "Console",
+      /console|exception/,
+      con
+        ? `${con.errors} error${con.errors === 1 ? "" : "s"}, ${con.warnings} warning${con.warnings === 1 ? "" : "s"}`
+        : null,
+      !!con?.errors,
+    ],
+    [
+      Activity,
+      "Performance",
+      /lcp|largest contentful|layout shift|\bcls\b|\binp\b|ttfb/,
+      null,
+      false,
+    ],
     [Cookie, "Cookies", /cookie|httponly/, null, false],
     [Database, "Storage", /localstorage|local storage/, null, false],
     [Clipboard, "Clipboard", /clipboard/, null, false],
@@ -590,7 +699,13 @@ export function RunTheater() {
           <div className="notice-banner red" role="alert">
             <AlertTriangle size={15} />
             <span>
-              <b>Exit code {run.exitCode}: {run.status === "timeout" ? "timeout or cancelled" : "auth, setup or infrastructure error"}.</b>{" "}
+              <b>
+                Exit code {run.exitCode}:{" "}
+                {run.status === "timeout"
+                  ? "timeout or cancelled"
+                  : "auth, setup or infrastructure error"}
+                .
+              </b>{" "}
               {run.error} This is not a product bug, so no repair is triggered.
             </span>
           </div>
@@ -602,14 +717,20 @@ export function RunTheater() {
               <b>{String(w.code || "warning")}:</b> {String(w.message || "")}
               {Array.isArray(w.variables) &&
                 ` (${(w.variables as { name: string; reason: string }[]).map((v) => `${v.name}: ${v.reason}`).join(", ")})`}
-              {w.suggested_file ? ` Add them to ${String(w.suggested_file)}.` : ""}
+              {w.suggested_file
+                ? ` Add them to ${String(w.suggested_file)}.`
+                : ""}
             </span>
           </div>
         ))}
         <div className="theater-grid">
           <section className="panel terminal-panel">
             <div className="terminal-tabs">
-              <Tabs items={["NDJSON stream", "Browser mirror"]} active={tab} onChange={setTab} />
+              <Tabs
+                items={["NDJSON stream", "Browser mirror"]}
+                active={tab}
+                onChange={setTab}
+              />
               <IconButton
                 icon={Rewind}
                 label="Replay the recorded stream at 5x"
@@ -642,11 +763,21 @@ export function RunTheater() {
                         }
                       >
                         <ChevronRight size={10} />
-                        {e.type === "progress" ? `step ${e.step}${e.childId ? ` / ${e.childId}` : ""}` : e.type}
+                        {e.type === "progress"
+                          ? `step ${e.step}${e.childId ? ` / ${e.childId}` : ""}`
+                          : e.type}
                       </small>
                       <p>{brief(e)}</p>
                       {e.stepStatus && (
-                        <Tag color={e.stepStatus === "failed" ? "red" : e.stepStatus === "done" ? "green" : "gold"}>
+                        <Tag
+                          color={
+                            e.stepStatus === "failed"
+                              ? "red"
+                              : e.stepStatus === "done"
+                                ? "green"
+                                : "gold"
+                          }
+                        >
                           {e.stepStatus}
                         </Tag>
                       )}
@@ -667,13 +798,19 @@ export function RunTheater() {
             ) : (
               <div className="browser-mirror">
                 <span className="eyebrow muted">
-                  {shown ? `CAPTURED FRAME / STEP ${shown.n} OF ${steps.length}` : "NO CAPTURED FRAMES"}
+                  {shown
+                    ? `CAPTURED FRAME / STEP ${shown.n} OF ${steps.length}`
+                    : "NO CAPTURED FRAMES"}
                 </span>
                 <EvidenceFrame
                   src={shown ? shotFor(evidence, shown.step) : null}
                   url={run.targetUrl}
                   mobile={isMobile(run.platform)}
-                  alt={shown ? `Kane CLI screenshot at step ${shown.n}: ${shown.remark}` : "No screenshot"}
+                  alt={
+                    shown
+                      ? `Kane CLI screenshot at step ${shown.n}: ${shown.remark}`
+                      : "No screenshot"
+                  }
                   note={
                     runActive(run)
                       ? "Screenshots arrive when Kane CLI seals the evidence pack."
@@ -683,10 +820,21 @@ export function RunTheater() {
                   }
                 />
                 <div className="inline-icon">
-                  <button className="btn secondary compact" disabled={!steps.length || (frame ?? steps.length - 1) <= 0} onClick={() => setFrame((frame ?? steps.length - 1) - 1)}>
+                  <button
+                    className="btn secondary compact"
+                    disabled={!steps.length || (frame ?? steps.length - 1) <= 0}
+                    onClick={() => setFrame((frame ?? steps.length - 1) - 1)}
+                  >
                     Previous step
                   </button>
-                  <button className="btn secondary compact" disabled={!steps.length || (frame ?? steps.length - 1) >= steps.length - 1} onClick={() => setFrame((frame ?? steps.length - 1) + 1)}>
+                  <button
+                    className="btn secondary compact"
+                    disabled={
+                      !steps.length ||
+                      (frame ?? steps.length - 1) >= steps.length - 1
+                    }
+                    onClick={() => setFrame((frame ?? steps.length - 1) + 1)}
+                  >
                     Next step
                   </button>
                 </div>
@@ -705,16 +853,24 @@ export function RunTheater() {
               </div>
               <div className="kv-row">
                 <span>Exit code</span>
-                <code>{run.exitCode ?? "running"}{run.resultCode ? ` / result_code ${run.resultCode}` : ""}</code>
+                <code>
+                  {run.exitCode ?? "running"}
+                  {run.resultCode ? ` / result_code ${run.resultCode}` : ""}
+                </code>
               </div>
               <div className="kv-row">
                 <span>Steps</span>
-                <code>{run.stepsDone} done / {run.stepsFailed} failed</code>
+                <code>
+                  {run.stepsDone} done / {run.stepsFailed} failed
+                </code>
               </div>
               {run.sha && (
                 <div className="kv-row">
                   <span>Commit SHA</span>
-                  <button className="inline-icon mono" onClick={() => copy(run.sha!, "Commit SHA")}>
+                  <button
+                    className="inline-icon mono"
+                    onClick={() => copy(run.sha!, "Commit SHA")}
+                  >
                     {run.sha.slice(0, 7)}
                     <Copy size={11} />
                   </button>
@@ -723,17 +879,26 @@ export function RunTheater() {
               <div className="kv-row">
                 <span>Start / end</span>
                 <code>
-                  {time(run.at)} / {run.completedAt ? time(run.completedAt) : "--:--"} UTC
+                  {time(run.at)} /{" "}
+                  {run.completedAt ? time(run.completedAt) : "--:--"} UTC
                 </code>
               </div>
               <div className="kv-row">
                 <span>Duration / credits</span>
-                <code>{run.completedAt ? duration(run.duration) : "live"} / {run.credits.toFixed(1)}</code>
+                <code>
+                  {run.completedAt ? duration(run.duration) : "live"} /{" "}
+                  {run.credits.toFixed(1)}
+                </code>
               </div>
               {run.testManagerUrl && (
                 <div className="kv-row">
                   <span>Test Manager</span>
-                  <a className="inline-icon" href={run.testManagerUrl} target="_blank" rel="noreferrer">
+                  <a
+                    className="inline-icon"
+                    href={run.testManagerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Open <ArrowUpRight size={11} />
                   </a>
                 </div>
@@ -741,17 +906,28 @@ export function RunTheater() {
             </Accord>
             {(run.objective || run.testmdPath) && (
               <Accord title="Objective" icon={Terminal} open={false}>
-                <p className="description pre-wrap">{run.objective || run.testmdPath}</p>
+                <p className="description pre-wrap">
+                  {run.objective || run.testmdPath}
+                </p>
               </Accord>
             )}
             <Accord title="DevTools assertion scorecard" icon={ListChecks}>
               <div className="scorecard">
                 {domains.map(([I, label, pattern, captured, bad]) => {
                   const asserted = pattern.test(spec);
-                  const violated = bad || (asserted && pattern.test(failedText));
-                  const passed = asserted && run.status === "passed";
+                  const violated =
+                    bad || (asserted && pattern.test(failedText));
+                  const passed =
+                    asserted &&
+                    events.some(
+                      (e) =>
+                        e.stepStatus === "done" && pattern.test(e.remark || ""),
+                    );
                   return (
-                    <div key={label} className={violated ? "red" : passed ? "gold" : "muted"}>
+                    <div
+                      key={label}
+                      className={violated ? "red" : passed ? "gold" : "muted"}
+                    >
                       <span>
                         <I size={12} />
                         {label}
@@ -766,18 +942,25 @@ export function RunTheater() {
                               ? captured || "Asserted, passed"
                               : runActive(run)
                                 ? "Asserted, awaiting verdict"
-                                : captured || "Asserted"}
+                                : captured || "Requested; no step-level proof"}
                       </small>
                     </div>
                   );
                 })}
               </div>
             </Accord>
-            <Accord title="Final state extraction" icon={Database} open={!!run.finalState && Object.keys(run.finalState).length > 0}>
+            <Accord
+              title="Final state extraction"
+              icon={Database}
+              open={!!run.finalState && Object.keys(run.finalState).length > 0}
+            >
               {Object.entries(run.finalState || {}).map(([k, v]) => (
                 <div className="kv-row" key={k}>
                   <code>{k}</code>
-                  <button className="inline-icon mono" onClick={() => copy(String(v), k)}>
+                  <button
+                    className="inline-icon mono"
+                    onClick={() => copy(String(v), k)}
+                  >
                     {String(v).slice(0, 40)}
                     <Copy size={11} />
                   </button>
@@ -785,51 +968,90 @@ export function RunTheater() {
               ))}
               {!Object.keys(run.finalState || {}).length && (
                 <p className="description">
-                  No values were stored. Kane CLI only extracts state when the objective says
-                  &quot;store ... as &apos;name&apos;&quot;.
+                  No values were stored. Kane CLI only extracts state when the
+                  objective says &quot;store ... as &apos;name&apos;&quot;.
                 </p>
               )}
             </Accord>
             {run.assurance && (
               <Accord title="Assurance audit" icon={ShieldCheck} open={false}>
-                <pre className="diff-block">{JSON.stringify(run.assurance, null, 2)}</pre>
+                <pre className="diff-block">
+                  {JSON.stringify(run.assurance, null, 2)}
+                </pre>
               </Accord>
             )}
             {run.status === "failed" && (
               <div className="verdict-panel">
                 <div className="eyebrow red">
                   <AlertTriangle size={12} />
-                  {run.verdict?.confirmed ? "CONFIRMED PRODUCT BUG" : "REFEREE VERDICT: FAILED"}
+                  {run.verdict?.confirmed
+                    ? "CONFIRMED PRODUCT BUG"
+                    : "REFEREE VERDICT: FAILED"}
                 </div>
-                <h3>{String(run.verdict?.one_liner || run.oneLiner || run.reason || "The objective did not pass")}</h3>
+                <h3>
+                  {String(
+                    run.verdict?.one_liner ||
+                      run.oneLiner ||
+                      run.reason ||
+                      "The objective did not pass",
+                  )}
+                </h3>
                 <p>
                   Exit 1{run.resultCode ? ` / result ${run.resultCode}` : ""}
-                  {run.verdict?.severity ? ` / ${String(run.verdict.severity)} severity` : ""}
-                  {typeof run.verdict?.confidence === "number" ? ` / ${Math.round(run.verdict.confidence * 100)}% confidence` : ""}
-                  {run.verdict?.category ? ` / ${String(run.verdict.category)}` : ""}
+                  {run.verdict?.severity
+                    ? ` / ${String(run.verdict.severity)} severity`
+                    : ""}
+                  {typeof run.verdict?.confidence === "number"
+                    ? ` / ${Math.round(run.verdict.confidence * 100)}% confidence`
+                    : ""}
+                  {run.verdict?.category
+                    ? ` / ${String(run.verdict.category)}`
+                    : ""}
                 </p>
                 {run.summary && <p>{run.summary}</p>}
                 {run.battleId ? (
                   <button
                     className="btn secondary compact"
                     onClick={async () => {
-                      await act(() => api("/api/agent/heal", { json: { battleId: run.battleId, failedRunId: run.id } }), "Blue-Team healer engaged");
+                      if (run.trigger !== "sample_replay")
+                        await act(
+                          () =>
+                            api("/api/agent/heal", {
+                              json: {
+                                battleId: run.battleId,
+                                failedRunId: run.id,
+                              },
+                            }),
+                          "Blue-Team healer engaged",
+                        );
                       go("arena", { id: run.battleId! });
                     }}
                   >
                     <Sparkles size={12} />
-                    Send to Blue-Team Healer
+                    {run.trigger === "sample_replay"
+                      ? "Inspect repair timeline"
+                      : "Send to Blue-Team Healer"}
                   </button>
                 ) : (
                   <p className="small-note muted">
-                    Repairs are committed to a battle branch, never the default branch. Launch a
-                    battle from the Arena or gate a pull request to engage the healer.
+                    Repairs are committed to a battle branch, never the default
+                    branch. Launch a battle from the Arena or gate a pull
+                    request to engage the healer.
                   </p>
                 )}
                 {run.review && (
                   <button
                     className="text-button"
-                    onClick={() => act(() => api(`/api/runs/${run.id}`, { method: "PATCH", json: { reviewed: true } }), "Verdict reviewed")}
+                    onClick={() =>
+                      act(
+                        () =>
+                          api(`/api/runs/${run.id}`, {
+                            method: "PATCH",
+                            json: { reviewed: true },
+                          }),
+                        "Verdict reviewed",
+                      )
+                    }
                   >
                     <CheckCheck size={12} />
                     Mark reviewed
@@ -841,24 +1063,69 @@ export function RunTheater() {
         </div>
       </div>
       <div className="theater-actions">
-        {evidence?.packUrl ? (
-          <a className="btn secondary compact" href={evidence.packUrl} download={packName(run)}>
+        {run.trigger === "sample_replay" ? (
+          <button
+            className="btn secondary compact"
+            disabled={!detail}
+            onClick={() =>
+              downloadFile(
+                `${run.label}.sample.json`,
+                JSON.stringify(
+                  {
+                    source: "illustrative replay, not sealed evidence",
+                    ...detail,
+                  },
+                  null,
+                  2,
+                ),
+              )
+            }
+          >
+            <ArrowDownToLine size={13} />
+            Export sample trace
+          </button>
+        ) : evidence?.packUrl ? (
+          <a
+            className="btn secondary compact"
+            href={evidence.packUrl}
+            download={packName(run)}
+          >
             <ArrowDownToLine size={13} />
             Download .evidence
           </a>
         ) : (
-          <button className="btn secondary compact" disabled title={evidence ? "The worker has no storage bucket, so the sealed pack was not uploaded." : "This run has no evidence pack."}>
+          <button
+            className="btn secondary compact"
+            disabled
+            title={
+              evidence
+                ? "The worker has no storage bucket, so the sealed pack was not uploaded."
+                : "This run has no evidence pack."
+            }
+          >
             <ArrowDownToLine size={13} />
             Download .evidence
           </button>
         )}
-        <button className="btn secondary compact" disabled={!evidence} onClick={() => setView(true)}>
+        <button
+          className="btn secondary compact"
+          disabled={!evidence}
+          onClick={() => setView(true)}
+        >
           <Layers3 size={13} />
           Evidence viewer
         </button>
-        <button className="btn secondary compact" disabled={runActive(run) || (!run.objective && !run.testmdPath)} onClick={rerun}>
+        <button
+          className="btn secondary compact"
+          disabled={runActive(run) || (!run.objective && !run.testmdPath)}
+          onClick={
+            run.trigger === "sample_replay"
+              ? () => setReplayKey((k) => k + 1)
+              : rerun
+          }
+        >
           <Play size={13} />
-          Re-run live
+          {run.trigger === "sample_replay" ? "Replay timeline" : "Re-run live"}
         </button>
         <button className="btn primary compact" onClick={() => setShare(true)}>
           <Link size={13} />
@@ -867,17 +1134,25 @@ export function RunTheater() {
       </div>
       {view && <EvidenceViewer run={run} onClose={() => setView(false)} />}
       {share && (
-        <Modal title="Share this replay" eyebrow="INSTANT REPLAY LINK" onClose={() => setShare(false)}>
+        <Modal
+          title="Share this replay"
+          eyebrow="INSTANT REPLAY LINK"
+          onClose={() => setShare(false)}
+        >
           <div className="modal-body form-stack">
             <p className="description">
-              Anyone who can reach this workspace can open the link and watch the recorded NDJSON
-              stream replay at 5x speed. No credentials or credits are needed.
+              Anyone who can reach this workspace can open the link and watch
+              the recorded NDJSON timeline replay at 5× speed. Replay uses no
+              live credits; private workspaces still require operator access.
             </p>
             <label className="field">
               Replay URL
               <input readOnly value={link} onFocus={(e) => e.target.select()} />
             </label>
-            <button className="btn primary self-start" onClick={() => copy(link, "Replay link")}>
+            <button
+              className="btn primary self-start"
+              onClick={() => copy(link, "Replay link")}
+            >
               <Copy size={13} />
               Copy replay link
             </button>

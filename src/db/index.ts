@@ -17,9 +17,16 @@ export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
     connectionString: databaseUrl,
+    connectionTimeoutMillis: 4000,
+    idleTimeoutMillis: 15000,
+    application_name: "chaos-pact-control-plane",
     max: Number(process.env.DATABASE_POOL_MAX) || 5,
-    ssl:
-      process.env.DATABASE_SSL === "no-verify"
+    ssl: process.env.DATABASE_CA_PEM
+      ? {
+          ca: process.env.DATABASE_CA_PEM.replace(/\\n/g, "\n"),
+          rejectUnauthorized: true,
+        }
+      : process.env.DATABASE_SSL === "no-verify"
         ? { rejectUnauthorized: false }
         : process.env.DATABASE_SSL === "require"
           ? true

@@ -1,18 +1,18 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
-  workers: 3,
-  timeout: 35000,
+  testDir: "./tests",
+  testMatch: "workspace.spec.ts",
+  testIgnore: "**/legacy/**",
+  timeout: 30000,
+  fullyParallel: false,
+  workers: 2,
+  reporter: "list",
   use: {
-    baseURL: 'http://localhost:5173',
-    viewport: { width: 1440, height: 900 },
-    trace: 'retain-on-failure',
+    baseURL: process.env.TEST_BASE_URL || "http://127.0.0.1:3000",
+    viewport: { width: 1440, height: 950 },
+    headless: true,
+    trace: "retain-on-failure",
+    ...(process.env.WORKSPACE_PASSWORD ? { httpCredentials: { username: "operator", password: process.env.WORKSPACE_PASSWORD } } : {}),
   },
-  webServer: {
-    command: 'npm run dev -- --host 0.0.0.0',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-  },
-})
+});

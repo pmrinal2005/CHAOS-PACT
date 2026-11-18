@@ -62,7 +62,9 @@ export async function logBattle(
   message: string,
   patch: Partial<typeof adversarialBattles.$inferInsert> = {},
 ) {
-  const entry: BattleLogEntry[] = [{ at: new Date().toISOString(), actor, message }];
+  const entry: BattleLogEntry[] = [
+    { at: new Date().toISOString(), actor, message },
+  ];
   await db
     .update(adversarialBattles)
     .set({
@@ -99,23 +101,55 @@ export async function enforceRunGuards(requester: string, runs: number) {
 async function failSetup(runId: string, message: string, appUrl: string) {
   await db
     .update(kaneRuns)
-    .set({ status: "error", exitCode: 2, errorMessage: message, completedAt: new Date() })
+    .set({
+      status: "error",
+      exitCode: 2,
+      errorMessage: message,
+      completedAt: new Date(),
+    })
     .where(eq(kaneRuns.id, runId));
   await onRunCompleted(runId, appUrl);
 }
 
 /** Creates one kane_runs row per target and dispatches each to the cloud worker. */
-export async function triggerRuns(input: TriggerInput, appUrl: string): Promise<RunRow[]> {
-  const [project] = await db.select().from(projects).where(eq(projects.id, input.projectId));
+export async function triggerRuns(
+  input: TriggerInput,
+  appUrl: string,
+): Promise<RunRow[]> {
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, input.projectId));
   need(project, 404, "Project not found.");
+  need(
+    project.id !== "c0aa5000-0000-4000-8000-000000000001",
+    409,
+    "This is a sample replay project. Connect your own project to execute a live verification.",
+  );
   const c = cfg();
+  if (c.workerUrl) {
+    need(
+      process.env.WORKSPACE_PASSWORD,
+      403,
+      "Protect the workspace before connecting a live worker.",
+    );
+    need(
+      c.appUrl,
+      503,
+      "APP_BASE_URL is required for trusted worker callbacks.",
+    );
+    appUrl = c.appUrl;
+  }
   const created: RunRow[] = [];
   for (const platform of input.targets) {
     const baseSurface =
-      input.surface || (input.testmdPath || input.testmdContent ? "testmd" : "run");
+      input.surface ||
+      (input.testmdPath || input.testmdContent ? "testmd" : "run");
     // Cloud-grid devices are only reachable through `testrun run --remote`.
     const surface =
-      platform === "remote_pixel_7" || platform === "ios_simulator" ? "testrun" : baseSurface;
+      platform === "remote_pixel_7" || platform === "ios_simulator"
+        ? "testrun"
+        : baseSurface;
     const targetUrl = input.targetUrl || project.stagingUrl;
     const [run] = await db
       .insert(kaneRuns)
@@ -166,7 +200,10 @@ export async function triggerRuns(input: TriggerInput, appUrl: string): Promise<
       bugDetection: input.bugDetectionMode || "continue",
       variables: input.variables,
       timeoutS: input.timeoutS || 180,
-      repo: { url: project.repoUrl, ref: input.repoRef || input.commitSha || project.defaultBranch },
+      repo: {
+        url: project.repoUrl,
+        ref: input.repoRef || input.commitSha || project.defaultBranch,
+      },
       deployWaitS: input.deployWaitS || 0,
       assurance: !!input.assurance,
       policyId: c.policyId || undefined,
@@ -189,7 +226,10 @@ export async function triggerRuns(input: TriggerInput, appUrl: string): Promise<
         );
         continue;
       }
-      await db.update(kaneRuns).set({ status: "running" }).where(eq(kaneRuns.id, run.id));
+      await db
+        .update(kaneRuns)
+        .set({ status: "running" })
+        .where(and(eq(kaneRuns.id, run.id), eq(kaneRuns.status, "queued")));
     } catch (err) {
       await failSetup(
         run.id,
@@ -201,18 +241,31 @@ export async function triggerRuns(input: TriggerInput, appUrl: string): Promise<
   return db
     .select()
     .from(kaneRuns)
-    .where(inArray(kaneRuns.id, created.map((r) => r.id)));
+    .where(
+      inArray(
+        kaneRuns.id,
+        created.map((r) => r.id),
+      ),
+    );
 }
 
 /** Classifies one stdout line per the Kane CLI stream contract (v1). */
 export function classifyEvent(payload: JsonMap) {
   const typed = typeof payload.type === "string";
-  const progress = !typed && typeof payload.step === "number";
+  const progress =
+    !typed &&
+    typeof payload.step === "number" &&
+    ["running", "done", "failed"].includes(String(payload.status));
   return {
-    eventType: typed ? (payload.type as string) : progress ? "progress" : "unknown",
+    eventType: typed
+      ? (payload.type as string)
+      : progress
+        ? "progress"
+        : "unknown",
     stepIndex: typeof payload.step === "number" ? payload.step : null,
     childId: typeof payload.child_id === "string" ? payload.child_id : null,
-    stepStatus: progress && typeof payload.status === "string" ? payload.status : null,
+    stepStatus:
+      progress && typeof payload.status === "string" ? payload.status : null,
     remark:
       typeof payload.remark === "string"
         ? payload.remark
@@ -224,7 +277,8 @@ export function classifyEvent(payload: JsonMap) {
   };
 }
 
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+const num = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : undefined;
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
 /** Extracts run fields from surface-specific events. */
@@ -248,7 +302,9 @@ function eventPatch(p: JsonMap): Partial<typeof kaneRuns.$inferInsert> {
       return {
         durationS: num(p.duration_s),
         testManagerUrl: str(p.share_url),
-        oneLiner: str(p.overall_status) ? `testmd ${p.overall_status}` : undefined,
+        oneLiner: str(p.overall_status)
+          ? `testmd ${p.overall_status}`
+          : undefined,
       };
     case "testrun_done":
     case "remote_done":
@@ -264,7 +320,12 @@ function eventPatch(p: JsonMap): Partial<typeof kaneRuns.$inferInsert> {
 export type WorkerReport = {
   runId: string;
   events?: { seq: number; payload: JsonMap; ts?: string }[];
-  preflight?: { cliVersion?: string; whoami?: string; balance?: number | null; authenticated?: boolean };
+  preflight?: {
+    cliVersion?: string;
+    whoami?: string;
+    balance?: number | null;
+    authenticated?: boolean;
+  };
   final?: {
     exitCode: number | null;
     error?: string;
@@ -288,32 +349,44 @@ export type WorkerReport = {
 
 /** Persists a batch of worker output and finalises the run when it exits. */
 export async function ingestWorkerReport(body: WorkerReport, appUrl: string) {
-  const [run] = await db.select().from(kaneRuns).where(eq(kaneRuns.id, body.runId));
+  const [run] = await db
+    .select()
+    .from(kaneRuns)
+    .where(eq(kaneRuns.id, body.runId));
   need(run, 404, "Run not found.");
+  if (run.completedAt) return; // A terminal ledger entry cannot be reopened by a late callback.
   if (body.preflight)
     await setSetting("worker_report", { ...body.preflight, at: Date.now() });
 
   const events = (body.events || []).filter(
-    (e) => e && Number.isInteger(e.seq) && e.payload && typeof e.payload === "object",
+    (e) =>
+      e &&
+      Number.isInteger(e.seq) &&
+      e.payload &&
+      typeof e.payload === "object",
   );
   if (events.length) {
-    await db
+    const inserted = await db
       .insert(ndjsonEvents)
       .values(
         events.map((e) => ({
           runId: run.id,
           seqNo: e.seq,
           rawPayload: e.payload,
-          emittedAt: new Date(str(e.payload.ts) || e.ts || Date.now()),
+          emittedAt: new Date(
+            Date.parse(str(e.payload.ts) || e.ts || "") || Date.now(),
+          ),
           ...classifyEvent(e.payload),
         })),
       )
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ payload: ndjsonEvents.rawPayload });
     let patch: Partial<typeof kaneRuns.$inferInsert> = {};
     const warnings: JsonMap[] = [];
-    for (const e of events) {
+    for (const e of inserted) {
       const next = eventPatch(e.payload);
-      for (const [k, v] of Object.entries(next)) if (v !== undefined) patch = { ...patch, [k]: v };
+      for (const [k, v] of Object.entries(next))
+        if (v !== undefined) patch = { ...patch, [k]: v };
       if (e.payload.type === "warning") warnings.push(e.payload);
     }
     // Count completions, never the highest step index (bifurcation offsets it).
@@ -331,7 +404,9 @@ export async function ingestWorkerReport(body: WorkerReport, appUrl: string) {
         stepsDone: steps.done,
         stepsFailed: steps.failed,
         ...(warnings.length
-          ? { warningsJson: [...(run.warningsJson || []), ...warnings] }
+          ? {
+              warningsJson: sql`coalesce(${kaneRuns.warningsJson}, '[]'::jsonb) || ${JSON.stringify(warnings)}::jsonb`,
+            }
           : {}),
         ...(run.status === "queued" ? { status: "running" } : {}),
       })
@@ -342,50 +417,69 @@ export async function ingestWorkerReport(body: WorkerReport, appUrl: string) {
   const f = body.final;
   // The process exit code is authoritative: 0 pass, 1 fail, 2 infra, 3 timeout.
   const status =
-    f.exitCode === 0 ? "passed" : f.exitCode === 1 ? "failed" : f.exitCode === 3 ? "timeout" : "error";
+    f.exitCode === 0
+      ? "passed"
+      : f.exitCode === 1
+        ? "failed"
+        : f.exitCode === 3
+          ? "timeout"
+          : "error";
   const completedAt = new Date();
-  const [fresh] = await db.select().from(kaneRuns).where(eq(kaneRuns.id, run.id));
-  await db
-    .update(kaneRuns)
-    .set({
-      status,
-      exitCode: f.exitCode ?? 2,
-      completedAt,
-      durationS: fresh.durationS ?? (completedAt.getTime() - run.startedAt.getTime()) / 1000,
-      stderrTail: f.stderrTail?.slice(-4000),
-      assuranceJson: f.assurance,
-      errorMessage:
-        status === "error" || status === "timeout"
-          ? f.error ||
-            fresh.errorMessage ||
-            (status === "timeout"
-              ? "Kane CLI timed out or was cancelled (exit 3)."
-              : "Kane CLI reported an auth, setup or infrastructure error (exit 2).")
-          : fresh.errorMessage,
-    })
-    .where(eq(kaneRuns.id, run.id));
-  if (f.evidence) {
-    const ev = f.evidence;
-    const values = {
-      runId: run.id,
-      packStoragePath: ev.packUrl || null,
-      packSha256: ev.packSha256 || null,
-      packBytes: ev.packBytes ?? null,
-      validationExitCode: ev.validationExitCode ?? null,
-      policyVerdictJson: ev.policyVerdict || null,
-      failingStepIndex: ev.failingStepIndex ?? null,
-      failureYamlJson: ev.failure || null,
-      annotatedScreenshots: ev.screenshots || [],
-      networkLogSlice: (ev.network || []).slice(0, 400),
-      consoleLogSlice: (ev.console || []).slice(0, 400),
-      devtoolsAssertionsSummary: ev.devtools || null,
-    };
-    await db
-      .insert(evidenceArtifacts)
-      .values(values)
-      .onConflictDoUpdate({ target: evidenceArtifacts.runId, set: values });
-  }
-  await onRunCompleted(run.id, appUrl);
+  const finalized = await db.transaction(async (tx) => {
+    const [fresh] = await tx
+      .select()
+      .from(kaneRuns)
+      .where(eq(kaneRuns.id, run.id))
+      .for("update");
+    if (fresh.completedAt) return false;
+    await tx
+      .update(kaneRuns)
+      .set({
+        status,
+        exitCode:
+          f.exitCode !== null && [0, 1, 2, 3].includes(f.exitCode)
+            ? f.exitCode
+            : 2,
+        completedAt,
+        durationS:
+          fresh.durationS ??
+          (completedAt.getTime() - run.startedAt.getTime()) / 1000,
+        stderrTail: f.stderrTail?.slice(-4000),
+        assuranceJson: f.assurance,
+        errorMessage:
+          status === "error" || status === "timeout"
+            ? f.error ||
+              fresh.errorMessage ||
+              (status === "timeout"
+                ? "Kane CLI timed out or was cancelled (exit 3)."
+                : "Kane CLI reported an auth, setup or infrastructure error (exit 2).")
+            : fresh.errorMessage,
+      })
+      .where(eq(kaneRuns.id, run.id));
+    if (f.evidence) {
+      const ev = f.evidence;
+      const values = {
+        runId: run.id,
+        packStoragePath: ev.packUrl || null,
+        packSha256: ev.packSha256 || null,
+        packBytes: ev.packBytes ?? null,
+        validationExitCode: ev.validationExitCode ?? null,
+        policyVerdictJson: ev.policyVerdict || null,
+        failingStepIndex: ev.failingStepIndex ?? null,
+        failureYamlJson: ev.failure || null,
+        annotatedScreenshots: ev.screenshots || [],
+        networkLogSlice: (ev.network || []).slice(0, 400),
+        consoleLogSlice: (ev.console || []).slice(0, 400),
+        devtoolsAssertionsSummary: ev.devtools || null,
+      };
+      await tx
+        .insert(evidenceArtifacts)
+        .values(values)
+        .onConflictDoUpdate({ target: evidenceArtifacts.runId, set: values });
+    }
+    return true;
+  });
+  if (finalized) await onRunCompleted(run.id, appUrl);
 }
 
 /** Fan-out after any run reaches a terminal state. */
@@ -393,14 +487,22 @@ export async function onRunCompleted(runId: string, appUrl: string) {
   const [run] = await db.select().from(kaneRuns).where(eq(kaneRuns.id, runId));
   if (!run) return;
   if (run.requirementId && run.status === "passed") {
-    const [project] = await db.select().from(projects).where(eq(projects.id, run.projectId));
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, run.projectId));
     if (project) {
       const requirements = project.requirementsJson.map((r) =>
-        r.id === run.requirementId ? { ...r, trust: "trusted" as const, lastRunId: run.id } : r,
+        r.id === run.requirementId
+          ? { ...r, trust: "trusted" as const, lastRunId: run.id }
+          : r,
       );
       await db
         .update(projects)
-        .set({ requirementsJson: requirements, assuranceCoveragePct: coveragePct(requirements) })
+        .set({
+          requirementsJson: requirements,
+          assuranceCoveragePct: coveragePct(requirements),
+        })
         .where(eq(projects.id, project.id));
     }
   }
@@ -410,8 +512,13 @@ export async function onRunCompleted(runId: string, appUrl: string) {
     if (run.role === "self_verify") await agents.onSelfVerify(run);
     else await agents.advanceBattle(run, appUrl);
   } catch (err) {
-    await logBattle(run.battleId, "system", `Loop error: ${err instanceof Error ? err.message : err}`, {
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
+    await logBattle(
+      run.battleId,
+      "system",
+      `Loop error: ${err instanceof Error ? err.message : err}`,
+      {
+        errorMessage: err instanceof Error ? err.message : String(err),
+      },
+    );
   }
 }

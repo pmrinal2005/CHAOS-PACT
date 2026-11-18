@@ -13,11 +13,25 @@ export const PATCH = (req: Request, { params }: Ctx) =>
   handle(async () => {
     const { id } = await params;
     const b = await req.json();
-    need(typeof b.title === "string" && b.title.trim().length >= 5, 400, "The title needs at least 5 characters.");
-    need(typeof b.body === "string" && b.body.trim().length >= 60, 400, "The analysis needs at least 60 characters.");
+    need(
+      typeof b.title === "string" && b.title.trim().length >= 5,
+      400,
+      "The title needs at least 5 characters.",
+    );
+    need(
+      typeof b.body === "string" && b.body.trim().length >= 60,
+      400,
+      "The analysis needs at least 60 characters.",
+    );
     const rows = await db
       .update(publishedPostmortems)
-      .set({ title: b.title.trim().slice(0, 160), markdownBody: b.body, status: "awaiting_verification", publishedAt: null })
+      .set({
+        title: b.title.trim().slice(0, 160),
+        markdownBody: b.body,
+        status: "awaiting_verification",
+        publishedAt: null,
+        selfVerifiedRunId: null,
+      })
       .where(eq(publishedPostmortems.id, id))
       .returning({ id: publishedPostmortems.id });
     need(rows.length, 404, "Post-mortem not found.");
@@ -29,5 +43,8 @@ export const POST = (req: Request, { params }: Ctx) =>
   handle(async () => {
     const { id } = await params;
     const run = await selfVerify(id, appUrlFor(req));
-    return Response.json({ runId: run.id, status: run.status, error: run.errorMessage }, { status: 202 });
+    return Response.json(
+      { runId: run.id, status: run.status, error: run.errorMessage },
+      { status: 202 },
+    );
   });

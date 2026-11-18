@@ -1,3 +1,4 @@
+import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   ArrowUpRight,
   Bot,
@@ -18,7 +19,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PLATFORMS, platformNames } from "@/lib/types";
-import { Empty, EvidenceFrame, Gauge, PageHead, PanelHeading, RunTable, Tag, isMobile, statusColor } from "./ui";
+import {
+  Empty,
+  EvidenceFrame,
+  Gauge,
+  PageHead,
+  PanelHeading,
+  RunTable,
+  Tag,
+  isMobile,
+  statusColor,
+} from "./ui";
 import { api, duration, stamp, useProject, useWorkspace } from "./workspace";
 
 /** Real configuration state of every external surface. No toggles that pretend. */
@@ -27,7 +38,13 @@ export function Integrations() {
   const origin = system?.appUrl || location.origin;
   const report = system?.workerReport;
   const webhookRuns = runs.filter((r) => r.trigger === "github_webhook").length;
-  const rows: { icon: LucideIcon; name: string; ok: boolean; detail: string; env: string }[] = [
+  const rows: {
+    icon: LucideIcon;
+    name: string;
+    ok: boolean;
+    detail: string;
+    env: string;
+  }[] = [
     {
       icon: Server,
       name: "Cloud Kane worker",
@@ -96,8 +113,8 @@ export function Integrations() {
         <div className="section-intro">
           <span className="eyebrow gold">CONNECTED SURFACES</span>
           <p>
-            Secrets live in environment variables and are never shown here. Each row reports whether
-            the server can use that integration right now.
+            Secrets live in environment variables and are never shown here. Each
+            row reports whether the server can use that integration right now.
           </p>
         </div>
         <div className="status-list">
@@ -121,15 +138,34 @@ export function Integrations() {
         <section className="panel" style={{ padding: 18 }}>
           {(
             [
-              ["GitHub webhook payload URL", `${origin}/api/webhooks/github`, "Content type application/json. Events: Pull requests, Pushes."],
-              ["Worker callback", `${origin}/api/worker/events`, "The worker posts NDJSON batches and results here with the shared secret."],
-              ["Receipt verification", `${origin}/api/receipt/<battle-or-run-id>`, "Public. Append ?format=svg for a README badge."],
-              ["Public post-mortems", `${origin}/postmortems`, "Articles Kane CLI has self-verified."],
+              [
+                "GitHub webhook payload URL",
+                `${origin}/api/webhooks/github`,
+                "Content type application/json. Events: Pull requests, Pushes.",
+              ],
+              [
+                "Worker callback",
+                `${origin}/api/worker/events`,
+                "The worker posts NDJSON batches and results here with the shared secret.",
+              ],
+              [
+                "Receipt verification",
+                `${origin}/api/receipt/<battle-or-run-id>`,
+                "Public. Append ?format=svg for a README badge.",
+              ],
+              [
+                "Public post-mortems",
+                `${origin}/postmortems`,
+                "Articles Kane CLI has self-verified.",
+              ],
             ] as const
           ).map(([label, value, hint]) => (
             <div className="kv-row" key={label} title={hint}>
               <span>{label}</span>
-              <button className="inline-icon mono" onClick={() => copy(value, label)}>
+              <button
+                className="inline-icon mono"
+                onClick={() => copy(value, label)}
+              >
                 <code>{value}</code>
                 <Copy size={11} />
               </button>
@@ -145,7 +181,9 @@ export function Integrations() {
 export function Devices() {
   const { projectRuns, go, startRun, project } = useProject();
   const [busy, setBusy] = useState("");
-  const latestDesktop = projectRuns.find((r) => r.platform === "desktop_web" && (r.objective || r.testmdPath));
+  const latestDesktop = projectRuns.find(
+    (r) => r.platform === "desktop_web" && (r.objective || r.testmdPath),
+  );
   return (
     <>
       <PageHead
@@ -164,7 +202,15 @@ export function Devices() {
               <section className="panel device-card" key={platform}>
                 <PanelHeading
                   icon={isMobile(platform) ? Smartphone : Monitor}
-                  action={latest ? <Tag color={statusColor(latest.display)}>{latest.display}</Tag> : <Tag>No runs</Tag>}
+                  action={
+                    latest ? (
+                      <Tag color={statusColor(latest.display)}>
+                        {latest.display}
+                      </Tag>
+                    ) : (
+                      <Tag>No runs</Tag>
+                    )
+                  }
                 >
                   {platformNames[platform]}
                 </PanelHeading>
@@ -184,34 +230,49 @@ export function Devices() {
                 </div>
                 <div className="kv-row">
                   <span>Latest</span>
-                  <b className="mono">{latest ? `${latest.label}, ${latest.completedAt ? duration(latest.duration) : "live"}` : "none"}</b>
+                  <b className="mono">
+                    {latest
+                      ? `${latest.label}, ${latest.completedAt ? duration(latest.duration) : "live"}`
+                      : "none"}
+                  </b>
                 </div>
                 <div className="device-foot">
-                  <button className="text-button" disabled={!latest} onClick={() => latest && go("theater", { id: latest.id })}>
+                  <button
+                    className="text-button"
+                    disabled={!latest}
+                    onClick={() => latest && go("theater", { id: latest.id })}
+                  >
                     Open latest run <ArrowUpRight size={12} />
                   </button>
-                  {platform !== "desktop_web" && (
-                    <button
-                      className="btn secondary compact"
-                      disabled={!latestDesktop || !!busy}
-                      title={latestDesktop ? `Re-run ${latestDesktop.label} on this target` : "Run a desktop verification first"}
-                      onClick={async () => {
-                        setBusy(platform);
-                        await startRun({
-                          executionMode: "live_cloud",
-                          name: latestDesktop!.name,
-                          objective: latestDesktop!.objective || undefined,
-                          testmdPath: latestDesktop!.testmdPath || undefined,
-                          url: latestDesktop!.targetUrl || project.staging,
-                          targets: [platform],
-                        });
-                        setBusy("");
-                      }}
-                    >
-                      <Play size={12} />
-                      {busy === platform ? "Dispatching..." : "Mirror latest desktop spec"}
-                    </button>
-                  )}
+                  {platform !== "desktop_web" &&
+                    project.id !== SAMPLE_PROJECT_ID && (
+                      <button
+                        className="btn secondary compact"
+                        disabled={!latestDesktop || !!busy}
+                        title={
+                          latestDesktop
+                            ? `Re-run ${latestDesktop.label} on this target`
+                            : "Run a desktop verification first"
+                        }
+                        onClick={async () => {
+                          setBusy(platform);
+                          await startRun({
+                            executionMode: "live_cloud",
+                            name: latestDesktop!.name,
+                            objective: latestDesktop!.objective || undefined,
+                            testmdPath: latestDesktop!.testmdPath || undefined,
+                            url: latestDesktop!.targetUrl || project.staging,
+                            targets: [platform],
+                          });
+                          setBusy("");
+                        }}
+                      >
+                        <Play size={12} />
+                        {busy === platform
+                          ? "Dispatching..."
+                          : "Mirror latest desktop spec"}
+                      </button>
+                    )}
                 </div>
               </section>
             );
@@ -219,10 +280,14 @@ export function Devices() {
         </div>
         <div className="section-title spaced">
           <h2>Mobile and cloud-grid executions</h2>
-          <span className="mono muted">{projectRuns.filter((r) => isMobile(r.platform)).length} records</span>
+          <span className="mono muted">
+            {projectRuns.filter((r) => isMobile(r.platform)).length} records
+          </span>
         </div>
         <section className="panel">
-          <RunTable runs={projectRuns.filter((r) => isMobile(r.platform)).slice(0, 12)} />
+          <RunTable
+            runs={projectRuns.filter((r) => isMobile(r.platform)).slice(0, 12)}
+          />
         </section>
       </div>
     </>
@@ -236,13 +301,20 @@ export function Team() {
   const [role, setRole] = useState("Engineer");
   return (
     <>
-      <PageHead eyebrow="WORKSPACE ACCESS" title="Team" description="The people recorded against this workspace." />
+      <PageHead
+        eyebrow="WORKSPACE ACCESS"
+        title="Team"
+        description="The people recorded against this workspace."
+      />
       <div className="page-content narrow-content">
         <form
           className="invite-form"
           onSubmit={async (e) => {
             e.preventDefault();
-            const ok = await act(() => api("/api/team", { json: { name, email, role } }), `${name} added to the roster`);
+            const ok = await act(
+              () => api("/api/team", { json: { name, email, role } }),
+              `${name} added to the roster`,
+            );
             if (ok) {
               setName("");
               setEmail("");
@@ -251,15 +323,24 @@ export function Team() {
         >
           <label className="field">
             Name
-            <input required value={name} onChange={(e) => setName(e.target.value)} />
+            <input
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </label>
           <label className="field">
             Email
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </label>
           <label className="field">
             Role
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value)}>
               <option>Owner</option>
               <option>Engineer</option>
               <option>Viewer</option>
@@ -271,7 +352,9 @@ export function Team() {
           </button>
         </form>
         <p className="subtle-note">
-          This is a roster only: the workspace has no sign-in yet, so roles are not enforced and no invitation email is sent.
+          Role labels describe this roster; they do not grant access. Private
+          workspace protection is configured separately, and no invitation email
+          is sent.
           {operator.name ? ` Current operator profile: ${operator.name}.` : ""}
         </p>
         <section className="panel table-scroll">
@@ -304,7 +387,13 @@ export function Team() {
                       <button
                         className="text-button"
                         aria-label={`Remove ${m.name}`}
-                        onClick={() => act(() => api(`/api/team?id=${m.id}`, { method: "DELETE" }), `${m.name} removed`)}
+                        onClick={() =>
+                          act(
+                            () =>
+                              api(`/api/team?id=${m.id}`, { method: "DELETE" }),
+                            `${m.name} removed`,
+                          )
+                        }
                       >
                         <Trash2 size={13} />
                         Remove
@@ -315,7 +404,10 @@ export function Team() {
               </tbody>
             </table>
           ) : (
-            <Empty title="No team members recorded" description="Add the people who operate this workspace." />
+            <Empty
+              title="No team members recorded"
+              description="Add the people who operate this workspace."
+            />
           )}
         </section>
       </div>
@@ -324,17 +416,32 @@ export function Team() {
 }
 
 export function Billing() {
-  const { runs, projects, credits, creditsKnown, limit, consumed, budget, reportedBalance, saveSetting, system } = useWorkspace();
+  const {
+    runs,
+    projects,
+    credits,
+    creditsKnown,
+    limit,
+    consumed,
+    budget,
+    reportedBalance,
+    saveSetting,
+    system,
+  } = useWorkspace();
   const [draft, setDraft] = useState(String(budget || ""));
   const billed = runs.filter((r) => r.credits > 0);
   const byPlatform = PLATFORMS.map((p) => ({
     label: platformNames[p],
-    credits: billed.filter((r) => r.platform === p).reduce((n, r) => n + r.credits, 0),
+    credits: billed
+      .filter((r) => r.platform === p)
+      .reduce((n, r) => n + r.credits, 0),
     runs: runs.filter((r) => r.platform === p).length,
   }));
   const byProject = projects.map((p) => ({
     label: p.name,
-    credits: billed.filter((r) => r.projectId === p.id).reduce((n, r) => n + r.credits, 0),
+    credits: billed
+      .filter((r) => r.projectId === p.id)
+      .reduce((n, r) => n + r.credits, 0),
     runs: runs.filter((r) => r.projectId === p.id).length,
   }));
   const max = Math.max(1, ...byPlatform.map((b) => b.credits));
@@ -348,19 +455,29 @@ export function Billing() {
       <div className="page-content">
         <div className="billing-top">
           <section className="panel billing-gauge">
-            {creditsKnown && <Gauge value={Math.round(credits)} limit={Math.round(limit)} large />}
+            {creditsKnown && (
+              <Gauge
+                value={Math.round(credits)}
+                limit={Math.round(limit)}
+                large
+              />
+            )}
             <p className="billing-gauge-note">
               {!creditsKnown
                 ? "No balance to show yet. The worker reports kane-cli balance on its first job; until then you can set a budget below."
                 : reportedBalance !== null
-                ? `Balance reported by the worker's kane-cli balance${system?.workerReport ? ` at ${stamp(system.workerReport.at)} UTC` : ""}.`
-                : "Budget minus recorded consumption. The worker reports the authoritative balance on its first job."}
+                  ? `Balance reported by the worker's kane-cli balance${system?.workerReport ? ` at ${stamp(system.workerReport.at)} UTC` : ""}.`
+                  : "Budget minus recorded consumption. The worker reports the authoritative balance on its first job."}
             </p>
           </section>
           <section className="panel usage-chart" style={{ padding: 18 }}>
             <div className="micro-label">CREDITS BY EXECUTION TARGET</div>
             <div className="usage-total">
-              {consumed.toFixed(1)} <span className="muted">credits across {billed.length} billed run{billed.length === 1 ? "" : "s"}</span>
+              {consumed.toFixed(1)}{" "}
+              <span className="muted">
+                credits across {billed.length} billed run
+                {billed.length === 1 ? "" : "s"}
+              </span>
             </div>
             <div className="spend-legend">
               {byPlatform.map((b) => (
@@ -372,7 +489,10 @@ export function Billing() {
                     <strong>{b.credits.toFixed(1)}</strong>
                   </div>
                   <div className="spend-track">
-                    <i className="gold" style={{ width: `${(b.credits / max) * 100}%` }} />
+                    <i
+                      className="gold"
+                      style={{ width: `${(b.credits / max) * 100}%` }}
+                    />
                   </div>
                 </div>
               ))}
@@ -386,21 +506,35 @@ export function Billing() {
           className="invite-form"
           onSubmit={(e) => {
             e.preventDefault();
-            saveSetting("credit_budget", Number(draft), "Credit budget updated");
+            saveSetting(
+              "credit_budget",
+              Number(draft),
+              "Credit budget updated",
+            );
           }}
         >
           <label className="field">
             Budget for this workspace (credits)
-            <input type="number" min="1" required value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <input
+              type="number"
+              min="1"
+              required
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
           </label>
-          <button className="btn primary" disabled={!Number(draft) || Number(draft) === budget}>
+          <button
+            className="btn primary"
+            disabled={!Number(draft) || Number(draft) === budget}
+          >
             <Check size={14} />
             Save budget
           </button>
         </form>
         <p className="subtle-note">
-          Live runs are also limited to {system?.rateLimitPerHour ?? "a fixed number of"} per requester per hour, and are refused
-          once the reported balance reaches zero.
+          Live runs are also limited to{" "}
+          {system?.rateLimitPerHour ?? "a fixed number of"} per requester per
+          hour, and are refused once the reported balance reaches zero.
         </p>
         <div className="section-title spaced">
           <h2>Usage by project</h2>
@@ -428,7 +562,10 @@ export function Billing() {
               </tbody>
             </table>
           ) : (
-            <Empty title="No usage yet" description="Usage appears after the first Kane CLI run completes." />
+            <Empty
+              title="No usage yet"
+              description="Usage appears after the first Kane CLI run completes."
+            />
           )}
         </section>
       </div>

@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { ensureSchema } from "@/db/bootstrap";
 
 /** Runtime configuration. Read lazily so values are never baked into the build. */
 export function cfg() {
@@ -36,7 +37,8 @@ export function appUrlFor(req?: Request) {
   const host = h.get("x-forwarded-host") || h.get("host");
   if (!host) return new URL(req.url).origin;
   const proto =
-    h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+    h.get("x-forwarded-proto") ||
+    (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }
 
@@ -56,6 +58,7 @@ export const need = (cond: unknown, status: number, message: string) => {
 /** Wraps a route handler so thrown HttpErrors become JSON responses. */
 export async function handle(fn: () => Promise<Response>): Promise<Response> {
   try {
+    await ensureSchema();
     return await fn();
   } catch (err) {
     if (err instanceof HttpError)
@@ -63,10 +66,41 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
         { error: err.message, detail: err.detail },
         { status: err.status },
       );
-    console.error(err);
+    const reason = err as {
+      cause?: { code?: string };
+      code?: string;
+      message?: string;
+    };
+    const code = reason.cause?.code || reason.code || "INTERNAL";
+    if (err instanceof SyntaxError || code === "22P02")
+      return Response.json(
+        {
+          error: "Invalid request data. Check the identifiers and JSON fields.",
+        },
+        { status: 400 },
+      );
+    if (code === "23505")
+      return Response.json(
+        { error: "A record with these details already exists." },
+        { status: 409 },
+      );
+    if (code === "23503")
+      return Response.json(
+        { error: "The referenced record is missing or still in use." },
+        { status: 409 },
+      );
+    const database =
+      /^(42|08|28|53|57|ECONN|ENOTFOUND|ETIMEDOUT)/.test(code) ||
+      /failed query|connect|database/i.test(reason.message || "");
+    console.error("[chaos-pact] Request failed", { code, database });
     return Response.json(
-      { error: err instanceof Error ? err.message : "Unexpected server error" },
-      { status: 500 },
+      {
+        error: database
+          ? "The database is not ready. Check DATABASE_URL, permissions, and the workspace migration."
+          : "The request could not be completed. Please retry.",
+        code: database ? "WORKSPACE_NOT_READY" : "REQUEST_FAILED",
+      },
+      { status: database ? 503 : 500 },
     );
   }
 }
@@ -80,11 +114,19 @@ export function safeEqual(a: string, b: string) {
 export function requireWorker(req: Request) {
   const { workerSecret } = cfg();
   need(workerSecret, 503, "WORKER_SHARED_SECRET is not configured.");
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  need(token && safeEqual(token, workerSecret), 401, "Invalid worker credentials.");
+  const token = (req.headers.get("authorization") || "").replace(
+    /^Bearer\s+/i,
+    "",
+  );
+  need(
+    token && safeEqual(token, workerSecret),
+    401,
+    "Invalid worker credentials.",
+  );
 }
 
-export const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
+export const sha256 = (v: string) =>
+  createHash("sha256").update(v).digest("hex");
 
 /** Stable JSON so signatures do not depend on key order. */
 export function canonical(value: unknown): string {
@@ -92,14 +134,23 @@ export function canonical(value: unknown): string {
   if (value && typeof value === "object")
     return `{${Object.keys(value as object)
       .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`)
+      .map(
+        (k) =>
+          `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`,
+      )
       .join(",")}}`;
   return JSON.stringify(value ?? null);
 }
 export function signReceipt(payload: unknown) {
   const { hmacSecret } = cfg();
-  need(hmacSecret, 503, "HMAC_SECRET is not configured, so receipts cannot be signed.");
-  return createHmac("sha256", hmacSecret).update(canonical(payload)).digest("hex");
+  need(
+    hmacSecret,
+    503,
+    "HMAC_SECRET is not configured, so receipts cannot be signed.",
+  );
+  return createHmac("sha256", hmacSecret)
+    .update(canonical(payload))
+    .digest("hex");
 }
 export function verifyReceipt(payload: unknown, signature: string) {
   const { hmacSecret } = cfg();
@@ -118,7 +169,9 @@ export function requesterHash(req: Request) {
 }
 export const isHttpUrl = (v: unknown): v is string => {
   try {
-    return typeof v === "string" && ["http:", "https:"].includes(new URL(v).protocol);
+    return (
+      typeof v === "string" && ["http:", "https:"].includes(new URL(v).protocol)
+    );
   } catch {
     return false;
   }

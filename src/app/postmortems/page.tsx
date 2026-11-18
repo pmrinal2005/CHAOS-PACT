@@ -1,3 +1,4 @@
+import { ensureSchema } from "@/db/bootstrap";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/db";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Post-Mortems | CHAOS-PACT" };
 
 export default async function PostmortemIndex() {
+  await ensureSchema();
   const posts = await db
     .select()
     .from(publishedPostmortems)

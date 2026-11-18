@@ -1,40 +1,34 @@
 import {
   Activity,
-  ArrowDownLeft,
   ArrowUpRight,
   Bell,
   BookOpen,
   Box,
   Boxes,
-  ChartNoAxesCombined,
   Check,
+  ChevronDown,
   ChevronRight,
   ChevronsUpDown,
   CircleHelp,
-  CircleX,
-  Clock3,
-  Code2,
-  Coins,
+  ClipboardCheck,
   Command,
+  Cpu,
   CreditCard,
-  FileClock,
   FileText,
   GitBranch,
-  GitFork,
-  Github,
   Layers3,
   LayoutDashboard,
+  ListVideo,
   Menu,
-  Network,
-  PanelLeftClose,
-  PlugZap,
+  MonitorSmartphone,
+  PanelLeft,
+  Play,
+  Plug,
   Plus,
-  Radar,
+  Radio,
   Search,
   Settings2,
   ShieldCheck,
-  SlidersHorizontal,
-  Smartphone,
   Swords,
   Terminal,
   Users,
@@ -42,438 +36,340 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dot, Logo } from "./ui";
-import { battleOpen, pageNames, useWorkspace, type Page } from "./workspace";
+import { pageNames, useWorkspace, type Page } from "./workspace";
+import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 
 export const navigation: [Page, LucideIcon][] = [
   ["dashboard", LayoutDashboard],
+  ["project", ListVideo],
   ["arena", Swords],
   ["evidence", Layers3],
   ["coverage", Waypoints],
   ["postmortems", FileText],
-  ["integrations", PlugZap],
-  ["devices", Smartphone],
+  ["integrations", Plug],
+  ["devices", MonitorSmartphone],
   ["team", Users],
   ["billing", CreditCard],
   ["settings", Settings2],
+  ["audit", ClipboardCheck],
 ];
+const labels: Partial<Record<Page, string>> = {
+  dashboard: "Mission Control",
+  project: "Run ledger",
+  arena: "Adversarial arena",
+  evidence: "Evidence vault",
+  coverage: "Coverage map",
+  postmortems: "Post-mortems",
+  devices: "Device grid",
+  billing: "Billing & credits",
+  audit: "Blueprint audit",
+};
+
 export function Shell({ children }: { children: ReactNode }) {
-  const {
-    page,
-    project,
-    projects,
-    operator,
-    inboxRead,
-    inboxEvents,
-    go,
-    credits,
-    limit,
-    projectRuns,
-    projectBattles,
-    setDialog,
-    notice,
-    sidebarOpen,
-    setSidebarOpen,
-    setProjectId,
-    system,
-    syncedAt,
-    loadError,
-    patchProject,
-    creditsKnown,
-  } = useWorkspace();
-  const latest = projectRuns.find((r) => r.completedAt);
-  const live = project?.mode === "live_cloud";
-  const [clock, setClock] = useState(new Date());
-  const [switcher, setSwitcher] = useState(false);
-  const [profile, setProfile] = useState(false);
-  const rail = useRef<HTMLDivElement>(null);
-  const [marker, setMarker] = useState(27);
-  useLayoutEffect(() => {
-    const measure = () => {
-      const active = rail.current?.querySelector<HTMLElement>(".rail-button.active");
-      if (rail.current && active) setMarker(active.getBoundingClientRect().top - rail.current.getBoundingClientRect().top + (active.offsetHeight - 19) / 2);
+  const w = useWorkspace();
+  const [collapsed, setCollapsed] = useState(false);
+  const [menu, setMenu] = useState<"project" | "profile" | "mode" | null>(null);
+  const shell = useRef<HTMLDivElement>(null);
+  const sample = w.project?.id === SAMPLE_PROJECT_ID;
+  const live = w.project?.mode === "live_cloud";
+  const name = w.operator.name || "Workspace operator";
+  const initials = w.operator.name
+    ? w.operator.name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((s) => s[0])
+        .join("")
+        .toUpperCase()
+    : "OP";
+  const goto = (p: Page) => {
+    setMenu(null);
+    w.go(p, p === "project" ? { tab: "Run history" } : undefined);
+  };
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-console-menu]"))
+        setMenu(null);
     };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [page]);
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  useEffect(() => {
-    setSwitcher(false);
-    setProfile(false);
-  }, [page]);
-  useEffect(() => {
-    if (!switcher && !profile) return;
-    const hide = () => {
-      setSwitcher(false);
-      setProfile(false);
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenu(null);
+        w.setSidebarOpen(false);
+      }
     };
-    window.addEventListener("click", hide);
-    return () => window.removeEventListener("click", hide);
-  }, [switcher, profile]);
-  const filters: [string, LucideIcon, number, string, () => void][] = [
-    [
-      "Failing runs",
-      CircleX,
-      projectRuns.filter((r) => r.status === "failed").length,
-      "red",
-      () => go("project", { tab: "Run history", filter: "failed" }),
-    ],
-    [
-      "Pending review",
-      Clock3,
-      projectRuns.filter((r) => r.review).length,
-      "gold",
-      () => go("project", { tab: "Run history", filter: "review" }),
-    ],
-    [
-      "Active battles",
-      Swords,
-      projectBattles.filter(battleOpen).length,
-      "cyan",
-      () => go("arena"),
-    ],
-    [
-      "Recent evidence",
-      Layers3,
-      projectRuns.filter((r) => r.hasEvidence).length,
-      "muted",
-      () => go("evidence"),
-    ],
-  ];
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", key);
+    };
+  }, [w.setSidebarOpen]);
+  const navItem = ([page, Icon]: [Page, LucideIcon]) => {
+    const active =
+      w.page === page || (page === "project" && w.page === "theater");
+    const label = labels[page] || pageNames[page];
+    return (
+      <button
+        key={page}
+        className={`cs-nav-item ${active ? "selected" : ""}`}
+        aria-current={active ? "page" : undefined}
+        title={label}
+        onClick={() => goto(page)}
+      >
+        <Icon size={16} strokeWidth={1.65} />
+        <span>{label}</span>
+        {page === "project" && w.projectRuns.length > 0 && (
+          <small>{w.projectRuns.length}</small>
+        )}
+        {page === "arena" && <i className="arena-beacon" />}
+      </button>
+    );
+  };
   return (
-    <div className="app-shell">
-      <header className="topbar">
+    <div
+      ref={shell}
+      className={`console-shell ${collapsed ? "cs-collapsed" : ""} ${w.sidebarOpen ? "cs-mobile-open" : ""}`}
+    >
+      {w.sidebarOpen && (
         <button
-          className="brand-block"
+          className="cs-scrim"
+          aria-label="Close workspace navigation"
+          onClick={() => w.setSidebarOpen(false)}
+        />
+      )}
+      <aside className="console-sidebar" aria-label="Workspace navigation">
+        <button
+          className="cs-brand"
           aria-label="CHAOS-PACT home"
-          onClick={() => go("dashboard")}
+          onClick={() => goto("dashboard")}
         >
           <Logo />
+          <span className="cs-brand-sub">REVENUE GUARD</span>
         </button>
-        <div className="topbar-main">
-          <button
-            className="mobile-toggle icon-button"
-            aria-label="Open workspace sidebar"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu size={18} />
-          </button>
-          <div className="breadcrumbs">
-            <Boxes size={14} />
-            <span>Workspace</span>
-            <span className="crumb-slash">/</span>
-            <b>{pageNames[page]}</b>
-          </div>
-          <div className="global-tools">
-            {project && (
-              <div className="mode-switch" role="group" aria-label="Execution mode">
+        <div className="cs-sidebar-scroll">
+          <div className="cs-project-wrap" data-console-menu>
+            <button
+              className="cs-project-switch"
+              aria-expanded={menu === "project"}
+              aria-label="Switch project"
+              onClick={() => setMenu(menu === "project" ? null : "project")}
+            >
+              <span className="cs-project-symbol">
+                <Box size={20} />
+              </span>
+              <span className="cs-project-text">
+                <small>ACTIVE PROJECT</small>
+                <strong>{w.project?.name || "Your workspace"}</strong>
+              </span>
+              <ChevronsUpDown className="cs-switch-chevron" size={13} />
+            </button>
+            {menu === "project" && (
+              <div className="cs-dropdown project-options">
+                <small>YOUR PROJECTS</small>
+                {w.projects
+                  .filter((p) => !p.archived)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        w.setProjectId(p.id);
+                        goto("dashboard");
+                      }}
+                    >
+                      <Box size={14} />
+                      {p.name}
+                      {p.id === w.project?.id && <Check size={13} />}
+                    </button>
+                  ))}
                 <button
-                  className={!live ? "on" : ""}
-                  aria-pressed={!live}
-                  title="Replay sealed runs from their recorded NDJSON stream"
-                  onClick={() => live && patchProject({ mode: "judge_instant_replay" }, "Judge Instant-Replay mode")}
+                  onClick={() => {
+                    setMenu(null);
+                    w.setDialog("onboarding");
+                  }}
                 >
-                  Instant Replay
-                </button>
-                <button
-                  className={live ? "on" : ""}
-                  aria-pressed={live}
-                  title="Dispatch real Kane CLI runs to the cloud worker"
-                  onClick={() => !live && patchProject({ mode: "live_cloud" }, "Live Cloud mode")}
-                >
-                  Live Cloud
+                  <Plus size={14} />
+                  Connect project
                 </button>
               </div>
             )}
-            <span className="system-status">
-              <Dot color={loadError ? "red" : system?.worker ? "green" : "gold"} />{" "}
-              {loadError ? "API unreachable" : system?.worker ? "Worker configured" : "No worker configured"}
+          </div>
+          <nav>
+            <p className="cs-group-title">OPERATIONS</p>
+            {navigation.slice(0, 6).map(navItem)}
+            <p className="cs-group-title second">WORKSPACE</p>
+            {navigation.slice(6).map(navItem)}
+          </nav>
+        </div>
+        <div className="cs-sidebar-bottom">
+          <button
+            className="cs-engine"
+            onClick={() => w.setDialog("environment")}
+          >
+            <span className="cs-engine-top">
+              <Cpu size={15} />
+              <b>Execution engine</b>
+              <i className={w.loadError ? "offline" : ""} />
             </span>
-            <span className="topbar-divider" />
+            <span className="cs-engine-track">
+              {Array.from({ length: 26 }, (_, i) => (
+                <i key={i} style={{ opacity: 0.4 + (i % 5) * 0.12 }} />
+              ))}
+            </span>
+            <span className="cs-engine-caption">
+              {live
+                ? w.system?.worker
+                  ? "Cloud worker configured"
+                  : "Cloud setup required"
+                : "Replay environment"}
+              <ArrowUpRight size={11} />
+            </span>
+          </button>
+          <button className="cs-guide" onClick={() => w.setDialog("help")}>
+            <BookOpen size={15} />
+            <span>Workspace guide</span>
+            <ArrowUpRight size={12} />
+          </button>
+          <div className="cs-build">
+            <span className="tiny-square" /> CONTROL PLANE <span>v1.0</span>
+          </div>
+        </div>
+      </aside>
+      <div className="console-stage">
+        <header className="console-topbar">
+          <div className="cs-location">
             <button
-              className="command-key"
-              onClick={() => setDialog("search")}
-              aria-label="Search workspace"
+              className="cs-tool cs-desktop-collapse"
+              aria-label={
+                collapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              onClick={() => setCollapsed(!collapsed)}
             >
-              <Search size={14} />
-              <kbd>
-                <Command size={10} /> K
-              </kbd>
+              <PanelLeft size={17} />
             </button>
             <button
-              className="notification-icon"
-              aria-label="Open notifications"
-              onClick={() => setDialog("notifications")}
+              className="cs-tool cs-mobile-toggle"
+              aria-label="Open workspace navigation"
+              onClick={() => w.setSidebarOpen(true)}
             >
-              <Bell size={17} />
-              {!inboxRead && inboxEvents.length > 0 && <i />}
+              <Menu size={18} />
             </button>
-            <div className="profile-wrap">
+            <span className="cs-location-separator" />
+            <span className="cs-crumb-root">Workspace</span>
+            <ChevronRight size={12} />
+            <b>{labels[w.page] || pageNames[w.page]}</b>
+          </div>
+          <div className="cs-global-tools">
+            <div data-console-menu className="cs-menu-wrap">
               <button
-                className="profile-avatar"
-                aria-label="Open profile menu"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProfile(!profile);
-                  setSwitcher(false);
-                }}
+                className="cs-mode-button"
+                aria-label="Choose execution mode"
+                aria-expanded={menu === "mode"}
+                onClick={() => setMenu(menu === "mode" ? null : "mode")}
               >
-                {(operator.name || "Operator")
-                  .split(" ")
-                  .map((w) => w[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
+                {live ? (
+                  <Radio size={12} />
+                ) : (
+                  <span className="mode-layers">
+                    <Layers3 size={12} />
+                  </span>
+                )}
+                {live ? "Live cloud" : "Instant replay"}
+                <ChevronDown size={11} />
               </button>
-              {profile && (
-                <div className="popover profile-menu">
-                  <strong>{operator.name || "Operator"}</strong>
-                  <small>{operator.email || "Set your profile in Settings"}</small>
-                  <button onClick={() => go("settings")}>
+              {menu === "mode" && (
+                <div className="cs-dropdown right">
+                  <small>EXECUTION MODE</small>
+                  <button
+                    onClick={() => {
+                      setMenu(null);
+                      w.patchProject(
+                        { mode: "judge_instant_replay" },
+                        "Instant replay selected",
+                      );
+                    }}
+                  >
+                    <Play size={13} />
+                    Instant replay{!live && <Check size={13} />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenu(null);
+                      w.setDialog("environment");
+                    }}
+                  >
+                    <Radio size={13} />
+                    Live cloud setup
+                    <ArrowUpRight size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <span className="cs-tool-divider" />
+            <button
+              className="cs-search"
+              aria-label="Search workspace"
+              onClick={() => w.setDialog("search")}
+            >
+              <Search size={15} />
+              <kbd>⌘ K</kbd>
+            </button>
+            <button
+              className="cs-bell cs-tool"
+              aria-label="Open notifications"
+              onClick={() => w.setDialog("notifications")}
+            >
+              <Bell size={16} />
+              {!w.inboxRead && w.inboxEvents.length > 0 && <i />}
+            </button>
+            <div className="cs-menu-wrap" data-console-menu>
+              <button
+                className="cs-avatar"
+                aria-label="Open profile menu"
+                onClick={() => setMenu(menu === "profile" ? null : "profile")}
+              >
+                {initials}
+              </button>
+              {menu === "profile" && (
+                <div className="cs-dropdown right profile-options">
+                  <strong>{name}</strong>
+                  <small>PERSONAL WORKSPACE</small>
+                  <button onClick={() => goto("settings")}>
                     <Settings2 size={14} />
                     Profile settings
                   </button>
-                  <button onClick={() => go("team")}>
+                  <button onClick={() => goto("team")}>
                     <Users size={14} />
-                    Manage team
+                    Team members
                   </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </header>
-      <div className="workbench">
-        <nav className="icon-rail" aria-label="Main navigation">
-          <div className="rail-top" ref={rail}>
-            <i className="rail-active-marker" aria-hidden="true" style={{ transform: `translateY(${marker}px)` }} />
-            {navigation.map(([id, Icon], i) => (
-              <div key={id} className={i === 7 ? "rail-break" : ""}>
-                <button
-                  className={`rail-button ${page === id || (id === "dashboard" && ["project", "theater"].includes(page)) ? "active" : ""}`}
-                  aria-label={pageNames[id]}
-                  aria-current={page === id ? "page" : undefined}
-                  onClick={() => go(id)}
-                >
-                  <Icon size={19} strokeWidth={1.65} />
-                  <span className="rail-tooltip">{pageNames[id]}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="rail-bottom">
-            <button
-              className="rail-button"
-              aria-label="Workspace help"
-              onClick={() => setDialog("help")}
-            >
-              <CircleHelp size={18} />
-              <span className="rail-tooltip">Workspace guide</span>
-            </button>
-            <button
-              className="rail-button rail-collapse"
-              aria-label="Toggle sidebar"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <PanelLeftClose size={17} />
-            </button>
-          </div>
-        </nav>
-        {sidebarOpen && (
-          <div
-            className="sidebar-scrim"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        <aside className={`secondary-sidebar ${sidebarOpen ? "expanded" : ""}`}>
-          <div className="sidebar-content">
-            <div className="side-label">
-              ACTIVE PROJECT{" "}
-              <button
-                className="mobile-close"
-                onClick={() => setSidebarOpen(false)}
-                aria-label="Close sidebar"
-              >
-                <X size={15} />
-              </button>
+        </header>
+        <main className="workspace-main cs-main" id="main-content" key={w.page}>
+          {w.loadError && (
+            <div className="cs-recovery" role="status">
+              <ShieldCheck size={15} />
+              <span>Read-only view · Database connection paused.</span>
+              <button onClick={() => w.refresh()}>Reconnect</button>
             </div>
-            <div className="project-switch-wrap">
-              <button
-                className={`project-switch ${switcher ? "is-open" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSwitcher(!switcher);
-                  setProfile(false);
-                }}
-                aria-expanded={switcher}
-              >
-                <span className="project-mark">
-                  <Box size={23} strokeWidth={1.4} />
-                </span>
-                <span className="project-copy">
-                  <strong>{project?.name || "No project"}</strong>
-                  <small>
-                    <Dot color={!latest ? "gold" : latest.status === "passed" ? "green" : "red"} />{" "}
-                    {!project ? "Connect a repository" : !latest ? "No runs yet" : `Last run ${latest.display}`}
-                  </small>
-                </span>
-                <ChevronsUpDown size={13} />
-              </button>
-              {switcher && (
-                <div className="popover project-menu">
-                  <div className="popover-label">YOUR PROJECTS</div>
-                  {projects
-                    .filter((p) => !p.archived)
-                    .map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setProjectId(p.id);
-                          go("project");
-                        }}
-                      >
-                        <Box size={15} />
-                        {p.name}
-                        {p.id === project?.id && (
-                          <Check size={12} className="gold" />
-                        )}
-                      </button>
-                    ))}
-                  <button onClick={() => setDialog("onboarding")}>
-                    <Plus size={15} />
-                    Connect project
-                  </button>
-                </div>
-              )}
+          )}
+          {sample && w.page !== "dashboard" && (
+            <div className="cs-sample-strip">
+              <span className="tiny-square" /> SAMPLE WORKSPACE{" "}
+              <span>Illustrative replay data · No live credits used</span>
             </div>
-            <div className="side-section">
-              <div className="side-label">
-                QUICK FILTERS <SlidersHorizontal size={12} />
-              </div>
-              <div className="quick-filters">
-                {filters.map(([label, Icon, count, color, action]) => (
-                  <button className="filter-row" key={label} onClick={action}>
-                    <Icon size={15} className={color} />
-                    <span>{label}</span>
-                    <b className="count-badge">
-                      {String(count).padStart(2, "0")}
-                    </b>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="side-section credits-side">
-              <div className="side-label">
-                EXECUTION CREDITS <Coins size={13} />
-              </div>
-              <div className="credit-numbers">
-                <strong>{creditsKnown ? Math.round(credits).toLocaleString() : "\u2014"}</strong>
-                <span>{creditsKnown ? `/ ${Math.round(limit).toLocaleString()}` : "balance not reported"}</span>
-              </div>
-              <div className="credit-track">
-                <i style={{ width: `${creditsKnown ? (credits / limit) * 100 : 0}%` }} />
-              </div>
-              <div className="credit-foot">
-                <span>{creditsKnown ? `${((credits / limit) * 100).toFixed(1)}% remaining` : "Set a budget or run the worker"}</span>
-                <button
-                  aria-label="View credit usage"
-                  onClick={() => go("billing")}
-                >
-                  <ArrowUpRight size={13} />
-                </button>
-              </div>
-            </div>
-            {project && <div className="side-section context-section">
-              <div className="side-label">PROJECT CONTEXT</div>
-              <button className="context-row" onClick={() => go("project")}>
-                <Github size={15} />
-                <span>{project.repo}</span>
-                <ArrowUpRight size={11} />
-              </button>
-              <button
-                className="context-row"
-                onClick={() => go("project", { tab: "Settings" })}
-              >
-                <GitBranch size={15} />
-                <span>{project.branch}</span>
-                <span className="branch-label">default</span>
-              </button>
-              <button className="context-row" onClick={() => go("coverage")}>
-                <FileText size={15} />
-                <span>{project.spec || "No specification"}</span>
-                <span className="tiny-dot" />
-              </button>
-            </div>}
-          </div>
-          <div className="sidebar-bottom">
-            <button
-              className="sandbox-mode"
-              onClick={() => setDialog("environment")}
-            >
-              <span className="sandbox-mark">
-                <Box size={15} />
-              </span>
-              <span>
-                <small>ENVIRONMENT</small>
-                <strong>
-                  {!project ? "No project connected" : live ? "Live Cloud worker" : "Instant-Replay sandbox"}
-                </strong>
-              </span>
-              <ChevronsUpDown size={12} />
-            </button>
-            <button className="docs-link" onClick={() => setDialog("help")}>
-              <BookOpen size={14} />
-              Workspace guide
-              <ArrowUpRight size={12} />
-            </button>
-          </div>
-        </aside>
-        <main
-          className={`workspace-main page-${page}`}
-          key={`${page}-${project?.id}`}
-        >
+          )}
           {children}
         </main>
       </div>
-      <footer className="app-statusbar">
-        <span>
-          <Activity size={11} className={system?.worker ? "green" : "gold"} />{" "}
-          {system?.worker ? "Cloud worker configured" : "Cloud worker not configured"}
-        </span>
-        <i />
-        <span className="region">
-          <Network size={11} />{" "}
-          {system?.workerReport?.cliVersion ? `kane-cli ${system.workerReport.cliVersion}` : "kane-cli not yet reported"}
-        </span>
-        <span className="statusbar-right">
-          <span className="version">{syncedAt ? `Synced ${new Date(syncedAt).toLocaleTimeString("en-GB", { timeZone: "UTC" })}` : "Syncing"}</span>
-          <i />
-          <Clock3 size={10} />
-          {clock.toLocaleTimeString("en-GB", { timeZone: "UTC" })} UTC
-        </span>
-      </footer>
-      {notice && (
+      {w.notice && (
         <div className="toast" role="status">
-          <ShieldCheck size={17} />
-          {notice}
+          <Activity size={15} />
+          {w.notice}
         </div>
       )}
     </div>
   );
 }
-export const screenIcons = {
-  Activity,
-  ArrowDownLeft,
-  ChartNoAxesCombined,
-  ChevronRight,
-  Code2,
-  FileClock,
-  GitFork,
-  Radar,
-  Terminal,
-};

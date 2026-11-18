@@ -1,4 +1,10 @@
-import { appUrlFor, handle, isHttpUrl, need, requesterHash } from "@/lib/config";
+import {
+  appUrlFor,
+  handle,
+  isHttpUrl,
+  need,
+  requesterHash,
+} from "@/lib/config";
 import { startSabotage } from "@/lib/agents";
 import { enforceRunGuards } from "@/lib/kane";
 import { CHAOS_SCENARIOS, PLATFORMS, type ChaosScenario } from "@/lib/types";
@@ -10,14 +16,42 @@ export const maxDuration = 60;
 export const POST = (req: Request) =>
   handle(async () => {
     const b = await req.json();
-    need((CHAOS_SCENARIOS as readonly string[]).includes(b.chaosScenario), 400, `chaosScenario must be one of: ${CHAOS_SCENARIOS.join(", ")}.`);
+    need(
+      b.projectId !== "c0aa5000-0000-4000-8000-000000000001",
+      409,
+      "Sample projects are replay-only. Inspect a recorded battle in the arena.",
+    );
+    need(
+      process.env.WORKSPACE_PASSWORD,
+      403,
+      "Live branch changes are locked on public deployments.",
+    );
+    need(
+      (CHAOS_SCENARIOS as readonly string[]).includes(b.chaosScenario),
+      400,
+      `chaosScenario must be one of: ${CHAOS_SCENARIOS.join(", ")}.`,
+    );
     need(typeof b.projectId === "string", 400, "projectId is required.");
-    need(!b.targetUrl || isHttpUrl(b.targetUrl), 400, "targetUrl must be a valid http(s) URL.");
-    const targets = Array.isArray(b.targets) ? b.targets.filter((t: string) => (PLATFORMS as readonly string[]).includes(t)) : undefined;
+    need(
+      !b.targetUrl || isHttpUrl(b.targetUrl),
+      400,
+      "targetUrl must be a valid http(s) URL.",
+    );
+    const targets = Array.isArray(b.targets)
+      ? b.targets.filter((t: string) =>
+          (PLATFORMS as readonly string[]).includes(t),
+        )
+      : undefined;
     const requester = requesterHash(req);
     await enforceRunGuards(requester, targets?.length || 1);
     const result = await startSabotage(
-      { projectId: b.projectId, scenario: b.chaosScenario as ChaosScenario, objective: typeof b.objective === "string" ? b.objective : undefined, targetUrl: b.targetUrl || undefined, targets },
+      {
+        projectId: b.projectId,
+        scenario: b.chaosScenario as ChaosScenario,
+        objective: typeof b.objective === "string" ? b.objective : undefined,
+        targetUrl: b.targetUrl || undefined,
+        targets,
+      },
       appUrlFor(req),
       requester,
     );

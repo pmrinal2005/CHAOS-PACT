@@ -32,7 +32,13 @@ const SKIP =
 /** Red-team fault catalogue: where to look, what to break, how the referee checks. */
 export const SCENARIOS: Record<
   ChaosScenario,
-  { match: RegExp; ext: RegExp; fault: string; targets: string[]; objective: (url: string) => string }
+  {
+    match: RegExp;
+    ext: RegExp;
+    fault: string;
+    targets: string[];
+    objective: (url: string) => string;
+  }
 > = {
   silent_stripe_500: {
     match: /(checkout|payment|stripe|billing|order|cart)/i,
@@ -82,49 +88,96 @@ export const SCENARIOS: Record<
 };
 
 async function loadBattle(battleId: string) {
-  const [battle] = await db.select().from(adversarialBattles).where(eq(adversarialBattles.id, battleId));
+  const [battle] = await db
+    .select()
+    .from(adversarialBattles)
+    .where(eq(adversarialBattles.id, battleId));
   need(battle, 404, "Battle not found.");
-  const [project] = await db.select().from(projects).where(eq(projects.id, battle.projectId));
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, battle.projectId));
   need(project, 404, "Project not found.");
   return { battle, project };
 }
 
-const previewUrl = (template: string | null, branch: string, fallback: string) =>
+const previewUrl = (
+  template: string | null,
+  branch: string,
+  fallback: string,
+) =>
   template?.includes("{branch}")
-    ? template.replace("{branch}", branch.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase())
+    ? template.replace(
+        "{branch}",
+        branch.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase(),
+      )
     : fallback;
 
 /* ------------------------------ Stage 2: Red team ------------------------------ */
 
 export async function startSabotage(
-  input: { projectId: string; scenario: ChaosScenario; objective?: string; targetUrl?: string; targets?: string[] },
+  input: {
+    projectId: string;
+    scenario: ChaosScenario;
+    objective?: string;
+    targetUrl?: string;
+    targets?: string[];
+  },
   appUrl: string,
   requester: string,
 ) {
   const scenario = SCENARIOS[input.scenario];
   need(scenario, 400, "Unknown chaos scenario.");
-  const [project] = await db.select().from(projects).where(eq(projects.id, input.projectId));
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, input.projectId));
   need(project, 404, "Project not found.");
-  need(cfg().workerUrl && cfg().workerSecret, 503, "No execution worker is configured (KANE_WORKER_URL, WORKER_SHARED_SECRET). A battle needs a live Kane CLI referee.");
+  need(
+    cfg().workerUrl && cfg().workerSecret,
+    503,
+    "No execution worker is configured (KANE_WORKER_URL, WORKER_SHARED_SECRET). A battle needs a live Kane CLI referee.",
+  );
   const gh = new GitHub(project.repoUrl);
 
   // Pick mutation candidates before any state is written, so failures stay clean.
   const baseSha = await gh.branchSha(project.defaultBranch);
   const tree = await gh.tree(baseSha);
   const candidates = tree
-    .filter((n) => !SKIP.test(n.path) && scenario.ext.test(n.path) && scenario.match.test(n.path) && (n.size ?? 0) < 24_000)
+    .filter(
+      (n) =>
+        !SKIP.test(n.path) &&
+        scenario.ext.test(n.path) &&
+        scenario.match.test(n.path) &&
+        (n.size ?? 0) < 24_000,
+    )
     .sort((a, b) => a.path.length - b.path.length)
     .slice(0, 4);
-  need(candidates.length, 422, `No files in ${project.repoUrl} match the "${scenarioNames[input.scenario]}" scenario.`);
-  const files = await Promise.all(
-    candidates.map(async (c) => ({ path: c.path, ...(await gh.file(c.path, baseSha)) })),
+  need(
+    candidates.length,
+    422,
+    `No files in ${project.repoUrl} match the "${scenarioNames[input.scenario]}" scenario.`,
   );
-  const mutation = await chatJson<{ path: string; content: string; description: string }>(
-    "You are the Red-Team Chaos Saboteur in CHAOS-PACT, an authorised resilience drill. You mutate one file on an isolated chaos branch of the team's own repository so that their browser verification gate can be exercised. Make one small, realistic regression of the requested kind, the sort an AI coding agent ships by accident. Never touch tests. Respond with JSON: {\"path\": string, \"content\": string (the complete new file), \"description\": string (one sentence)}.",
+  const files = await Promise.all(
+    candidates.map(async (c) => ({
+      path: c.path,
+      ...(await gh.file(c.path, baseSha)),
+    })),
+  );
+  const mutation = await chatJson<{
+    path: string;
+    content: string;
+    description: string;
+  }>(
+    'You are the Red-Team Chaos Saboteur in CHAOS-PACT, an authorised resilience drill. You mutate one file on an isolated chaos branch of the team\'s own repository so that their browser verification gate can be exercised. Make one small, realistic regression of the requested kind, the sort an AI coding agent ships by accident. Never touch tests. Respond with JSON: {"path": string, "content": string (the complete new file), "description": string (one sentence)}.',
     `Fault to inject: ${scenario.fault}\n\nCandidate files:\n${files.map((f) => `=== ${f.path} ===\n${f.content}`).join("\n\n")}`,
   );
   const target = files.find((f) => f.path === mutation.path);
-  need(target && typeof mutation.content === "string", 502, "The saboteur chose a file outside the candidate set.");
+  need(
+    target && typeof mutation.content === "string",
+    502,
+    "The saboteur chose a file outside the candidate set.",
+  );
   const diff = unifiedDiff(target!.path, target!.content, mutation.content);
   need(diff, 502, "The saboteur returned an unchanged file.");
 
@@ -132,7 +185,10 @@ export async function startSabotage(
     .insert(adversarialBattles)
     .values({
       projectId: project.id,
-      battleMode: input.scenario === "readme_pricing_lie" ? "readme_lie_audit" : "chaos_sabotage",
+      battleMode:
+        input.scenario === "readme_pricing_lie"
+          ? "readme_lie_audit"
+          : "chaos_sabotage",
       state: "SABOTAGE",
       saboteurMutationType: input.scenario,
       saboteurDiff: diff,
@@ -149,18 +205,29 @@ export async function startSabotage(
     branch,
     target!.sha,
   );
-  const targetUrl = input.targetUrl || previewUrl(project.previewUrlTemplate, branch, project.stagingUrl);
+  const targetUrl =
+    input.targetUrl ||
+    previewUrl(project.previewUrlTemplate, branch, project.stagingUrl);
   let objective = input.objective?.trim() || scenario.objective(targetUrl);
   if (input.scenario === "readme_pricing_lie") {
-    const claims = diff.split("\n").filter((l) => /^\+[^+]/.test(l)).map((l) => l.slice(1).trim()).filter(Boolean);
+    const claims = diff
+      .split("\n")
+      .filter((l) => /^\+[^+]/.test(l))
+      .map((l) => l.slice(1).trim())
+      .filter(Boolean);
     objective += ` The documentation states: ${claims.join(" ")}`;
   }
-  await logBattle(battle.id, "red", `Injected ${scenarioNames[input.scenario]} into ${target!.path} on ${branch}: ${mutation.description}`, {
-    branch,
-    commitSha,
-    targetUrl,
-    objective,
-  });
+  await logBattle(
+    battle.id,
+    "red",
+    `Injected ${scenarioNames[input.scenario]} into ${target!.path} on ${branch}: ${mutation.description}`,
+    {
+      branch,
+      commitSha,
+      targetUrl,
+      objective,
+    },
+  );
   const runs = await triggerRuns(
     {
       projectId: project.id,
@@ -179,7 +246,11 @@ export async function startSabotage(
     },
     appUrl,
   );
-  await logBattle(battle.id, "referee", `Kane CLI dispatched on ${runs.map((r) => platformNames[r.targetPlatform] || r.targetPlatform).join(" + ")} against ${targetUrl}.`);
+  await logBattle(
+    battle.id,
+    "referee",
+    `Kane CLI dispatched on ${runs.map((r) => platformNames[r.targetPlatform] || r.targetPlatform).join(" + ")} against ${targetUrl}.`,
+  );
   return { battleId: battle.id, runIds: runs.map((r) => r.id) };
 }
 
@@ -190,41 +261,77 @@ export async function advanceBattle(run: RunRow, appUrl: string) {
   const phase = await db
     .select()
     .from(kaneRuns)
-    .where(and(eq(kaneRuns.battleId, battle.id), eq(kaneRuns.role, run.role!), eq(kaneRuns.attempt, run.attempt)));
-  if (phase.some((r) => r.status === "queued" || r.status === "running")) return;
+    .where(
+      and(
+        eq(kaneRuns.battleId, battle.id),
+        eq(kaneRuns.role, run.role!),
+        eq(kaneRuns.attempt, run.attempt),
+      ),
+    );
+  if (
+    !phase.length ||
+    battle.targets.some((t) => !phase.some((r) => r.targetPlatform === t)) ||
+    phase.some((r) => r.status === "queued" || r.status === "running")
+  )
+    return;
   const failed = phase.find((r) => r.status === "failed");
-  const infra = phase.find((r) => r.status === "error" || r.status === "timeout");
-  const primary = phase.find((r) => r.targetPlatform === "desktop_web") || phase[0];
+  const infra = phase.find(
+    (r) => r.status === "error" || r.status === "timeout",
+  );
+  const primary =
+    phase.find((r) => r.targetPlatform === "desktop_web") || phase[0];
   const describe = (r: RunRow) =>
     `${shortId("RUN", r.id)} on ${platformNames[r.targetPlatform] || r.targetPlatform} exited ${r.exitCode}${r.resultCode ? ` (result_code ${r.resultCode})` : ""}${r.oneLiner ? `: ${r.oneLiner}` : ""}`;
 
   if (infra && !failed) {
     // Exit 2/3 is infrastructure, not a product bug: never trigger a code repair.
-    await logBattle(battle.id, "referee", `Referee could not complete. ${describe(infra)}. ${infra.errorMessage || ""}`.trim(), {
-      state: "BLOCKED_NEEDS_HUMAN",
-      errorMessage: infra.errorMessage || "Kane CLI could not run (exit 2/3).",
-      ...(run.role === "before" ? { beforeRunId: infra.id } : { afterRunId: infra.id }),
-    });
+    await logBattle(
+      battle.id,
+      "referee",
+      `Referee could not complete. ${describe(infra)}. ${infra.errorMessage || ""}`.trim(),
+      {
+        state: "BLOCKED_NEEDS_HUMAN",
+        errorMessage:
+          infra.errorMessage || "Kane CLI could not run (exit 2/3).",
+        ...(run.role === "before"
+          ? { beforeRunId: infra.id }
+          : { afterRunId: infra.id }),
+      },
+    );
     return;
   }
 
   if (run.role === "before") {
     if (failed) {
-      await logBattle(battle.id, "referee", `Deployment LOCKED. ${describe(failed)}.`, {
-        state: "REFEREE_FAIL",
-        beforeRunId: failed.id,
-        errorMessage: null,
-      });
-      if (battle.prNumber) await commentOnPr(battle, project.repoUrl, failed, appUrl);
-      else await healBattle(battle.id, failed.id, appUrl).catch((err) => healError(battle.id, err));
+      await logBattle(
+        battle.id,
+        "referee",
+        `Deployment LOCKED. ${describe(failed)}.`,
+        {
+          state: "REFEREE_FAIL",
+          beforeRunId: failed.id,
+          errorMessage: null,
+        },
+      );
+      if (battle.prNumber)
+        await commentOnPr(battle, project.repoUrl, failed, appUrl);
+      else
+        await healBattle(battle.id, failed.id, appUrl).catch((err) =>
+          healError(battle.id, err),
+        );
       return;
     }
     if (battle.saboteurMutationType) {
-      await logBattle(battle.id, "referee", "Referee passed even though a fault was injected. The objective's assertions do not cover this mutation; tighten the spec before trusting the gate.", {
-        state: "BLOCKED_NEEDS_HUMAN",
-        beforeRunId: primary.id,
-        errorMessage: "Injected fault was not detected by the referee.",
-      });
+      await logBattle(
+        battle.id,
+        "referee",
+        "Referee passed even though a fault was injected. The objective's assertions do not cover this mutation; tighten the spec before trusting the gate.",
+        {
+          state: "BLOCKED_NEEDS_HUMAN",
+          beforeRunId: primary.id,
+          errorMessage: "Injected fault was not detected by the referee.",
+        },
+      );
       return;
     }
     await sealPass(battle, primary, primary, appUrl);
@@ -233,53 +340,108 @@ export async function advanceBattle(run: RunRow, appUrl: string) {
 
   if (failed) {
     if (battle.healerAttempts >= MAX_ATTEMPTS) {
-      await logBattle(battle.id, "referee", `Re-verification failed after ${MAX_ATTEMPTS} repair attempts. ${describe(failed)}. Escalating.`, {
-        state: "BLOCKED_NEEDS_HUMAN",
-        afterRunId: failed.id,
-      });
+      await logBattle(
+        battle.id,
+        "referee",
+        `Re-verification failed after ${MAX_ATTEMPTS} repair attempts. ${describe(failed)}. Escalating.`,
+        {
+          state: "BLOCKED_NEEDS_HUMAN",
+          afterRunId: failed.id,
+        },
+      );
       return;
     }
-    await logBattle(battle.id, "referee", `Re-verification failed. ${describe(failed)}.`, { afterRunId: failed.id });
-    await healBattle(battle.id, failed.id, appUrl).catch((err) => healError(battle.id, err));
+    await logBattle(
+      battle.id,
+      "referee",
+      `Re-verification failed. ${describe(failed)}.`,
+      { afterRunId: failed.id },
+    );
+    await healBattle(battle.id, failed.id, appUrl).catch((err) =>
+      healError(battle.id, err),
+    );
     return;
   }
   const [before] = battle.beforeRunId
-    ? await db.select().from(kaneRuns).where(eq(kaneRuns.id, battle.beforeRunId))
+    ? await db
+        .select()
+        .from(kaneRuns)
+        .where(eq(kaneRuns.id, battle.beforeRunId))
     : [primary];
   await sealPass(battle, before || primary, primary, appUrl);
 }
 
 async function healError(battleId: string, err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
-  await logBattle(battleId, "blue", `Healer could not run: ${message}`, { errorMessage: message });
+  await logBattle(battleId, "blue", `Healer could not run: ${message}`, {
+    errorMessage: message,
+  });
 }
 
-async function sealPass(battle: BattleRow, before: RunRow, after: RunRow, appUrl: string) {
-  await logBattle(battle.id, "referee", `Exit code 0 on every target. ${shortId("RUN", after.id)} verified the build.`, {
-    state: "REFEREE_PASS",
-    afterRunId: after.id,
-    beforeRunId: battle.beforeRunId || before.id,
-    errorMessage: null,
-  });
+async function sealPass(
+  battle: BattleRow,
+  before: RunRow,
+  after: RunRow,
+  appUrl: string,
+) {
+  await logBattle(
+    battle.id,
+    "referee",
+    `Exit code 0 on every target. ${shortId("RUN", after.id)} verified the build.`,
+    {
+      state: "REFEREE_PASS",
+      afterRunId: after.id,
+      beforeRunId: battle.beforeRunId || before.id,
+      errorMessage: null,
+    },
+  );
   if (!battle.healerAttempts) return; // nothing was healed, so there is no incident to write up
   try {
     await publishPostmortem(battle.id, appUrl);
   } catch (err) {
-    await logBattle(battle.id, "publisher", `Post-mortem not published: ${err instanceof Error ? err.message : err}`);
+    await logBattle(
+      battle.id,
+      "publisher",
+      `Post-mortem not published: ${err instanceof Error ? err.message : err}`,
+    );
   }
 }
 
-async function commentOnPr(battle: BattleRow, repoUrl: string, failed: RunRow, appUrl: string) {
+async function commentOnPr(
+  battle: BattleRow,
+  repoUrl: string,
+  failed: RunRow,
+  appUrl: string,
+) {
   if (!battle.prNumber || !cfg().githubToken) return;
-  const [ev] = await db.select().from(evidenceArtifacts).where(eq(evidenceArtifacts.runId, failed.id));
-  const shot = ev?.annotatedScreenshots.find((s) => s.step === ev.failingStepIndex) || ev?.annotatedScreenshots.at(-1);
-  const bad = (ev?.networkLogSlice || []).filter((n) => Number(n.status) >= 400).slice(0, 5);
+  const [ev] = await db
+    .select()
+    .from(evidenceArtifacts)
+    .where(eq(evidenceArtifacts.runId, failed.id));
+  const shot =
+    ev?.annotatedScreenshots.find((s) => s.step === ev.failingStepIndex) ||
+    ev?.annotatedScreenshots.at(-1);
+  const bad = (ev?.networkLogSlice || [])
+    .filter((n) => Number(n.status) >= 400)
+    .slice(0, 5);
   const body = [
     `### CHAOS-PACT: verification failed`,
     `Kane CLI exited \`${failed.exitCode}\`${failed.resultCode ? ` with result_code \`${failed.resultCode}\`` : ""} on ${platformNames[failed.targetPlatform] || failed.targetPlatform}.`,
-    failed.oneLiner || failed.summary ? `> ${failed.oneLiner || failed.summary}` : "",
-    bad.length ? `**Network**\n${bad.map((n) => `- \`${n.method || "GET"} ${n.url || n.path || ""}\` returned ${n.status}`).join("\n")}` : "",
-    ev?.consoleLogSlice.length ? `**Console**\n${ev.consoleLogSlice.slice(0, 5).map((c) => `- ${String(c.text || c.message || JSON.stringify(c)).slice(0, 200)}`).join("\n")}` : "",
+    failed.oneLiner || failed.summary
+      ? `> ${failed.oneLiner || failed.summary}`
+      : "",
+    bad.length
+      ? `**Network**\n${bad.map((n) => `- \`${n.method || "GET"} ${n.url || n.path || ""}\` returned ${n.status}`).join("\n")}`
+      : "",
+    ev?.consoleLogSlice.length
+      ? `**Console**\n${ev.consoleLogSlice
+          .slice(0, 5)
+          .map(
+            (c) =>
+              `- ${String(c.text || c.message || JSON.stringify(c)).slice(0, 200)}`,
+          )
+          .join("\n")}`
+      : "",
     shot ? `![Failing step](${shot.url})` : "",
     `[Open the battle and trigger the Blue-Team repair](${appUrl}/#/arena?id=${battle.id})`,
   ]
@@ -287,44 +449,100 @@ async function commentOnPr(battle: BattleRow, repoUrl: string, failed: RunRow, a
     .join("\n\n");
   try {
     await new GitHub(repoUrl).comment(battle.prNumber, body);
-    await logBattle(battle.id, "system", `Posted failure summary on PR #${battle.prNumber}.`);
+    await logBattle(
+      battle.id,
+      "system",
+      `Posted failure summary on PR #${battle.prNumber}.`,
+    );
   } catch (err) {
-    await logBattle(battle.id, "system", `Could not comment on PR #${battle.prNumber}: ${err instanceof Error ? err.message : err}`);
+    await logBattle(
+      battle.id,
+      "system",
+      `Could not comment on PR #${battle.prNumber}: ${err instanceof Error ? err.message : err}`,
+    );
   }
 }
 
 /* ------------------- Stage 4: Blue-team repair with anti-cheat ------------------- */
 
-export async function healBattle(battleId: string, failedRunId: string, appUrl: string, feedback = ""): Promise<void> {
+export async function healBattle(
+  battleId: string,
+  failedRunId: string,
+  appUrl: string,
+  feedback = "",
+): Promise<void> {
   const { battle, project } = await loadBattle(battleId);
-  need(["REFEREE_FAIL", "HEALING", "ANTI_CHEAT_AUDIT"].includes(battle.state), 409, `Battle is ${battle.state}; there is no failing verdict to heal.`);
+  need(
+    ["REFEREE_FAIL", "HEALING", "ANTI_CHEAT_AUDIT"].includes(battle.state),
+    409,
+    `Battle is ${battle.state}; there is no failing verdict to heal.`,
+  );
   need(battle.branch, 409, "This battle has no branch to patch.");
-  need(battle.branch !== project.defaultBranch, 409, "Refusing to patch the default branch.");
+  need(
+    battle.branch !== project.defaultBranch,
+    409,
+    "Refusing to patch the default branch.",
+  );
   if (battle.healerAttempts >= MAX_ATTEMPTS) {
-    await logBattle(battleId, "blue", `Attempt limit (${MAX_ATTEMPTS}) reached. Escalating to a human.`, { state: "BLOCKED_NEEDS_HUMAN" });
+    await logBattle(
+      battleId,
+      "blue",
+      `Attempt limit (${MAX_ATTEMPTS}) reached. Escalating to a human.`,
+      { state: "BLOCKED_NEEDS_HUMAN" },
+    );
     return;
   }
-  const [failed] = await db.select().from(kaneRuns).where(eq(kaneRuns.id, failedRunId));
-  need(failed && failed.battleId === battleId, 404, "Failed run not found for this battle.");
+  const [failed] = await db
+    .select()
+    .from(kaneRuns)
+    .where(eq(kaneRuns.id, failedRunId));
+  need(
+    failed && failed.battleId === battleId,
+    404,
+    "Failed run not found for this battle.",
+  );
   const gh = new GitHub(project.repoUrl);
   const base = battle.baseBranch || project.defaultBranch;
   const attempt = battle.healerAttempts + 1;
 
-  const [ev] = await db.select().from(evidenceArtifacts).where(eq(evidenceArtifacts.runId, failed.id));
+  const [ev] = await db
+    .select()
+    .from(evidenceArtifacts)
+    .where(eq(evidenceArtifacts.runId, failed.id));
   const failedSteps = await db
     .select()
     .from(ndjsonEvents)
-    .where(and(eq(ndjsonEvents.runId, failed.id), eq(ndjsonEvents.stepStatus, "failed")));
-  const changedFiles = (await gh.compare(base, battle.branch!)).filter((f) => f.status !== "removed").slice(0, 6);
-  need(changedFiles.length, 422, `No differences between ${base} and ${battle.branch}; nothing to repair.`);
-  const sources = await Promise.all(
-    changedFiles.map(async (f) => ({ path: f.filename, patch: f.patch || "", ...(await gh.file(f.filename, battle.branch!)) })),
+    .where(
+      and(
+        eq(ndjsonEvents.runId, failed.id),
+        eq(ndjsonEvents.stepStatus, "failed"),
+      ),
+    );
+  const changedFiles = (await gh.compare(base, battle.branch!))
+    .filter((f) => f.status !== "removed")
+    .slice(0, 6);
+  need(
+    changedFiles.length,
+    422,
+    `No differences between ${base} and ${battle.branch}; nothing to repair.`,
   );
-  await logBattle(battleId, "blue", `Attempt ${attempt}/${MAX_ATTEMPTS}: diagnosing ${shortId("RUN", failed.id)} from ${ev ? "the unpacked evidence pack" : "the NDJSON stream (no evidence pack was uploaded)"}.`, {
-    state: "HEALING",
-    healerAttempts: attempt,
-    errorMessage: null,
-  });
+  const sources = await Promise.all(
+    changedFiles.map(async (f) => ({
+      path: f.filename,
+      patch: f.patch || "",
+      ...(await gh.file(f.filename, battle.branch!)),
+    })),
+  );
+  await logBattle(
+    battleId,
+    "blue",
+    `Attempt ${attempt}/${MAX_ATTEMPTS}: diagnosing ${shortId("RUN", failed.id)} from ${ev ? "the unpacked evidence pack" : "the NDJSON stream (no evidence pack was uploaded)"}.`,
+    {
+      state: "HEALING",
+      healerAttempts: attempt,
+      errorMessage: null,
+    },
+  );
 
   const evidence = {
     objective: failed.objective,
@@ -333,53 +551,112 @@ export async function healBattle(battleId: string, failedRunId: string, appUrl: 
     verdict: failed.bugVerdictJson,
     summary: failed.summary,
     reason: failed.reason,
-    failed_steps: failedSteps.map((s) => ({ step: s.stepIndex, remark: s.remark })),
+    failed_steps: failedSteps.map((s) => ({
+      step: s.stepIndex,
+      remark: s.remark,
+    })),
     failing_step_index: ev?.failingStepIndex,
     failure_yaml: ev?.failureYamlJson,
-    network_errors: (ev?.networkLogSlice || []).filter((n) => Number(n.status) >= 400).slice(0, 15),
+    network_errors: (ev?.networkLogSlice || [])
+      .filter((n) => Number(n.status) >= 400)
+      .slice(0, 15),
     console: (ev?.consoleLogSlice || []).slice(0, 15),
   };
-  const proposal = await chatJson<{ files: { path: string; content: string }[]; rationale: string }>(
-    "You are the Blue-Team Auto-Healer in CHAOS-PACT. Kane CLI, an independent browser referee, failed a build. Using its evidence and the diff that introduced the regression, repair the root cause in the application source with the smallest possible change. Hard rules, enforced by an audit: do not modify tests, _test.md specs or assurance files; do not delete validation or error handling; do not hardcode values the test observes; only edit the files provided. Respond with JSON: {\"files\": [{\"path\": string, \"content\": string (complete new file)}], \"rationale\": string}.",
+  const proposal = await chatJson<{
+    files: { path: string; content: string }[];
+    rationale: string;
+  }>(
+    'You are the Blue-Team Auto-Healer in CHAOS-PACT. Kane CLI, an independent browser referee, failed a build. Using its evidence and the diff that introduced the regression, repair the root cause in the application source with the smallest possible change. Hard rules, enforced by an audit: do not modify tests, _test.md specs or assurance files; do not delete validation or error handling; do not hardcode values the test observes; only edit the files provided. Respond with JSON: {"files": [{"path": string, "content": string (complete new file)}], "rationale": string}.',
     `Referee evidence:\n${JSON.stringify(evidence, null, 2)}\n\nDiff that introduced the regression (${base}...${battle.branch}):\n${sources.map((s) => s.patch).join("\n")}\n\nCurrent files:\n${sources.map((s) => `=== ${s.path} ===\n${s.content}`).join("\n\n")}${feedback ? `\n\nYour previous patch was rejected by the anti-cheat audit: ${feedback}` : ""}`,
   );
-  const proposed = Array.isArray(proposal.files) ? proposal.files.filter((f) => f && typeof f.path === "string" && typeof f.content === "string") : [];
+  const proposed = Array.isArray(proposal.files)
+    ? proposal.files.filter(
+        (f) => f && typeof f.path === "string" && typeof f.content === "string",
+      )
+    : [];
   const patch: (PatchFile & { sha?: string })[] = proposed.map((f) => {
     const src = sources.find((s) => s.path === f.path);
-    return { path: f.path, before: src?.content ?? "", after: f.content, sha: src?.sha };
+    return {
+      path: f.path,
+      before: src?.content ?? "",
+      after: f.content,
+      sha: src?.sha,
+    };
   });
-  const diff = patch.map((f) => unifiedDiff(f.path, f.before, f.after)).filter(Boolean).join("\n");
+  const diff = patch
+    .map((f) => unifiedDiff(f.path, f.before, f.after))
+    .filter(Boolean)
+    .join("\n");
   const fixtureValues = [
     ...Object.values(failed.finalStateJson || {}),
-    ...Object.values(failed.variablesJson || {}).map((v) => (v && typeof v === "object" ? (v as { value?: unknown }).value : v)),
-  ].filter((v): v is string | number => typeof v === "string" || typeof v === "number").map(String);
+    ...Object.values(failed.variablesJson || {}).map((v) =>
+      v && typeof v === "object" ? (v as { value?: unknown }).value : v,
+    ),
+  ]
+    .filter(
+      (v): v is string | number =>
+        typeof v === "string" || typeof v === "number",
+    )
+    .map(String);
   const audit = auditPatch({
     files: patch,
-    scopeDirs: [...new Set(sources.flatMap((s) => [s.path, dirOf(s.path)]).filter(Boolean))],
+    scopeDirs: [
+      ...new Set(
+        sources.flatMap((s) => [s.path, dirOf(s.path)]).filter(Boolean),
+      ),
+    ],
     fixtureValues,
-    regressionLines: sources.flatMap((s) => s.patch.split("\n").filter((l) => /^\+[^+]/.test(l)).map((l) => l.slice(1))),
+    regressionLines: sources.flatMap((s) =>
+      s.patch
+        .split("\n")
+        .filter((l) => /^\+[^+]/.test(l))
+        .map((l) => l.slice(1)),
+    ),
   });
-  await logBattle(battleId, "audit", audit.passed ? `Patch-intent audit passed (${audit.checks.length} checks). ${String(proposal.rationale || "").slice(0, 240)}` : `Patch rejected: ${audit.notes}`, {
-    state: "ANTI_CHEAT_AUDIT",
-    healerPatchDiff: diff || null,
-    antiCheatPassed: audit.passed,
-    antiCheatNotes: audit.notes,
-    antiCheatChecks: audit.checks,
-  });
+  await logBattle(
+    battleId,
+    "audit",
+    audit.passed
+      ? `Patch-intent audit passed (${audit.checks.length} checks). ${String(proposal.rationale || "").slice(0, 240)}`
+      : `Patch rejected: ${audit.notes}`,
+    {
+      state: "ANTI_CHEAT_AUDIT",
+      healerPatchDiff: diff || null,
+      antiCheatPassed: audit.passed,
+      antiCheatNotes: audit.notes,
+      antiCheatChecks: audit.checks,
+    },
+  );
   if (!audit.passed) {
     if (attempt >= MAX_ATTEMPTS) {
-      await logBattle(battleId, "blue", `No acceptable patch after ${MAX_ATTEMPTS} attempts. Escalating to a human.`, { state: "BLOCKED_NEEDS_HUMAN" });
+      await logBattle(
+        battleId,
+        "blue",
+        `No acceptable patch after ${MAX_ATTEMPTS} attempts. Escalating to a human.`,
+        { state: "BLOCKED_NEEDS_HUMAN" },
+      );
       return;
     }
     return healBattle(battleId, failedRunId, appUrl, audit.notes);
   }
   let commitSha = battle.commitSha;
   for (const f of patch.filter((p) => p.before !== p.after && p.sha))
-    commitSha = await gh.putFile(f.path, f.after, `fix(chaos-pact): blue-team repair attempt ${attempt}`, battle.branch!, f.sha!);
-  await logBattle(battleId, "blue", `Committed repair to ${battle.branch} (${commitSha?.slice(0, 7)}). Requesting re-verification.`, {
-    state: "HEALING",
-    commitSha,
-  });
+    commitSha = await gh.putFile(
+      f.path,
+      f.after,
+      `fix(chaos-pact): blue-team repair attempt ${attempt}`,
+      battle.branch!,
+      f.sha!,
+    );
+  await logBattle(
+    battleId,
+    "blue",
+    `Committed repair to ${battle.branch} (${commitSha?.slice(0, 7)}). Requesting re-verification.`,
+    {
+      state: "HEALING",
+      commitSha,
+    },
+  );
   await triggerRuns(
     {
       projectId: project.id,
@@ -390,7 +667,8 @@ export async function healBattle(battleId: string, failedRunId: string, appUrl: 
       name: `Re-verify: ${failed.name.replace(/^(Referee|Re-verify): /, "")}`,
       objective: failed.objective || battle.objective || undefined,
       testmdPath: failed.testmdPath || undefined,
-      surface: failed.testmdPath && !failed.objective ? failed.surface : undefined,
+      surface:
+        failed.testmdPath && !failed.objective ? failed.surface : undefined,
       targetUrl: failed.targetUrl || battle.targetUrl || undefined,
       targets: battle.targets.length ? battle.targets : [failed.targetPlatform],
       commitSha: commitSha || undefined,
@@ -404,18 +682,52 @@ export async function healBattle(battleId: string, failedRunId: string, appUrl: 
 
 /* ---------------------- Stage 5/6: Receipt + post-mortem ---------------------- */
 
-const slugify = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const slugify = (v: string) =>
+  v
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 export async function publishPostmortem(battleId: string, appUrl: string) {
   const { battle, project } = await loadBattle(battleId);
-  need(["REFEREE_PASS", "PUBLISHED"].includes(battle.state) && battle.afterRunId, 409, "A post-mortem needs a battle that Kane CLI re-verified to exit code 0.");
-  const runIds = [battle.beforeRunId, battle.afterRunId].filter((v): v is string => !!v);
-  const runs = await db.select().from(kaneRuns).where(inArray(kaneRuns.id, runIds));
-  const evidence = await db.select().from(evidenceArtifacts).where(inArray(evidenceArtifacts.runId, runIds));
+  need(
+    ["REFEREE_PASS", "PUBLISHED"].includes(battle.state) && battle.afterRunId,
+    409,
+    "A post-mortem needs a battle that Kane CLI re-verified to exit code 0.",
+  );
+  const runIds = [battle.beforeRunId, battle.afterRunId].filter(
+    (v): v is string => !!v,
+  );
+  const runs = await db
+    .select()
+    .from(kaneRuns)
+    .where(inArray(kaneRuns.id, runIds));
+  const evidence = await db
+    .select()
+    .from(evidenceArtifacts)
+    .where(inArray(evidenceArtifacts.runId, runIds));
   const before = runs.find((r) => r.id === battle.beforeRunId);
   const after = runs.find((r) => r.id === battle.afterRunId)!;
   const evBefore = evidence.find((e) => e.runId === battle.beforeRunId);
   const evAfter = evidence.find((e) => e.runId === battle.afterRunId);
+  need(
+    after?.exitCode === 0 &&
+      after.status === "passed" &&
+      after.trigger !== "sample_replay",
+    409,
+    "Publication requires a passing live verification, not a sample replay.",
+  );
+  need(
+    evAfter?.validationExitCode === 0 &&
+      /^[0-9a-f]{64}$/i.test(evAfter?.packSha256 || ""),
+    409,
+    "A validated evidence pack with a SHA-256 digest is required before signing.",
+  );
+  need(
+    !cfg().policyId || evAfter?.policyVerdictJson?.exit === 0,
+    409,
+    "The configured evidence policy has not passed.",
+  );
 
   const payload =
     battle.receiptPayload ||
@@ -428,20 +740,32 @@ export async function publishPostmortem(battleId: string, appUrl: string) {
       timestamp: new Date().toISOString(),
     } as Record<string, unknown>);
   const hash = signReceipt(payload);
-  await db.update(adversarialBattles).set({ receiptPayload: payload, hmacReceiptHash: hash }).where(eq(adversarialBattles.id, battleId));
+  await db
+    .update(adversarialBattles)
+    .set({ receiptPayload: payload, hmacReceiptHash: hash })
+    .where(eq(adversarialBattles.id, battleId));
 
-  const scenario = scenarioNames[battle.saboteurMutationType || ""] || (battle.battleMode === "pr_gate" ? `PR #${battle.prNumber ?? ""} gate` : battle.battleMode);
+  const scenario =
+    scenarioNames[battle.saboteurMutationType || ""] ||
+    (battle.battleMode === "pr_gate"
+      ? `PR #${battle.prNumber ?? ""} gate`
+      : battle.battleMode);
   const slug = `${slugify(scenario)}-${battle.id.slice(0, 8)}`;
   const title = `${scenario}: caught by Kane CLI, healed in ${battle.healerAttempts} attempt${battle.healerAttempts === 1 ? "" : "s"}`;
-  const badNet = (evBefore?.networkLogSlice || []).filter((n) => Number(n.status) >= 400).slice(0, 8);
+  const badNet = (evBefore?.networkLogSlice || [])
+    .filter((n) => Number(n.status) >= 400)
+    .slice(0, 8);
   const consoleErr = (evBefore?.consoleLogSlice || []).slice(0, 8);
   const shot = (ev?: typeof evBefore, step?: number | null) =>
-    ev?.annotatedScreenshots.find((s) => s.step === step)?.url || ev?.annotatedScreenshots.at(-1)?.url || null;
+    ev?.annotatedScreenshots.find((s) => s.step === step)?.url ||
+    ev?.annotatedScreenshots.at(-1)?.url ||
+    null;
   const beforeShot = shot(evBefore, evBefore?.failingStepIndex);
   const afterShot = shot(evAfter);
   const credits = runs.reduce((n, r) => n + (r.creditsConsumed || 0), 0);
   const tldr = `${project.name}: Kane CLI ${before ? `failed ${shortId("RUN", before.id)} (exit ${before.exitCode}${before.resultCode ? `, result_code ${before.resultCode}` : ""})` : "gated the build"}, the Blue-Team healer patched ${battle.branch}, and ${shortId("RUN", after.id)} re-verified to exit 0.`;
-  const fence = (lang: string, body: string) => `\`\`\`${lang}\n${body.replace(/```/g, "'''")}\n\`\`\``;
+  const fence = (lang: string, body: string) =>
+    `\`\`\`${lang}\n${body.replace(/```/g, "'''")}\n\`\`\``;
   const body = [
     `## What broke`,
     battle.saboteurDiff
@@ -451,17 +775,31 @@ export async function publishPostmortem(battleId: string, appUrl: string) {
     before
       ? `${shortId("RUN", before.id)} on ${platformNames[before.targetPlatform] || before.targetPlatform} exited \`${before.exitCode}\`${before.resultCode ? ` with \`result_code: ${before.resultCode}\`` : ""}.\n\n${before.summary || before.oneLiner || before.reason || ""}`
       : "",
-    before?.bugVerdictJson ? fence("json", JSON.stringify(before.bugVerdictJson, null, 2)) : "",
-    badNet.length ? `**Network**\n\n${badNet.map((n) => `- \`${n.method || "GET"} ${n.url || n.path || ""}\` returned **${n.status}**`).join("\n")}` : "",
-    consoleErr.length ? `**Console**\n\n${consoleErr.map((c) => `- ${String(c.text || c.message || JSON.stringify(c)).slice(0, 240)}`).join("\n")}` : "",
+    before?.bugVerdictJson
+      ? fence("json", JSON.stringify(before.bugVerdictJson, null, 2))
+      : "",
+    badNet.length
+      ? `**Network**\n\n${badNet.map((n) => `- \`${n.method || "GET"} ${n.url || n.path || ""}\` returned **${n.status}**`).join("\n")}`
+      : "",
+    consoleErr.length
+      ? `**Console**\n\n${consoleErr.map((c) => `- ${String(c.text || c.message || JSON.stringify(c)).slice(0, 240)}`).join("\n")}`
+      : "",
     `## The repair`,
-    battle.healerPatchDiff ? fence("diff", battle.healerPatchDiff) : "The build passed without a healer patch.",
+    battle.healerPatchDiff
+      ? fence("diff", battle.healerPatchDiff)
+      : "The build passed without a healer patch.",
     `## Anti-cheat audit`,
-    (battle.antiCheatChecks || []).map((c) => `- ${c.passed ? "PASS" : "FAIL"}: **${c.name}**. ${c.detail}`).join("\n") || "No patch was audited.",
+    (battle.antiCheatChecks || [])
+      .map((c) => `- ${c.passed ? "PASS" : "FAIL"}: **${c.name}**. ${c.detail}`)
+      .join("\n") || "No patch was audited.",
     `## Re-verification`,
     `${shortId("RUN", after.id)} exited \`0\` after ${after.stepsDone} completed step${after.stepsDone === 1 ? "" : "s"}. The loop consumed ${credits.toFixed(1)} credits across ${runs.length} referee run${runs.length === 1 ? "" : "s"}.`,
     `## Timeline`,
-    battle.log.map((l) => `- \`${l.at.slice(11, 19)} UTC\` **${l.actor}**: ${l.message}`).join("\n"),
+    battle.log
+      .map(
+        (l) => `- \`${l.at.slice(11, 19)} UTC\` **${l.actor}**: ${l.message}`,
+      )
+      .join("\n"),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -480,21 +818,39 @@ export async function publishPostmortem(battleId: string, appUrl: string) {
     markdownBody: body,
     beforeScreenshotUrl: beforeShot,
     afterScreenshotUrl: afterShot,
-    devtoolsProofJson: { network: badNet, console: consoleErr, receipt: { payload, hash } },
+    devtoolsProofJson: {
+      network: badNet,
+      console: consoleErr,
+      receipt: { payload, hash },
+    },
     socialShareSnippets: share,
   };
-  const [existing] = await db.select().from(publishedPostmortems).where(eq(publishedPostmortems.battleId, battleId));
+  const [existing] = await db
+    .select()
+    .from(publishedPostmortems)
+    .where(eq(publishedPostmortems.battleId, battleId));
   const [post] = existing
-    ? await db.update(publishedPostmortems).set(values).where(eq(publishedPostmortems.id, existing.id)).returning()
+    ? await db
+        .update(publishedPostmortems)
+        .set(values)
+        .where(eq(publishedPostmortems.id, existing.id))
+        .returning()
     : await db.insert(publishedPostmortems).values(values).returning();
-  await logBattle(battleId, "publisher", `Signed HMAC-SHA256 receipt ${hash.slice(0, 12)}… and drafted ${url}.`);
+  await logBattle(
+    battleId,
+    "publisher",
+    `Signed HMAC-SHA256 receipt ${hash.slice(0, 12)}… and drafted ${url}.`,
+  );
   await selfVerify(post.id, appUrl);
   return post;
 }
 
 /** Layer 3: Kane CLI verifies the published article before it is stamped. */
 export async function selfVerify(postmortemId: string, appUrl: string) {
-  const [post] = await db.select().from(publishedPostmortems).where(eq(publishedPostmortems.id, postmortemId));
+  const [post] = await db
+    .select()
+    .from(publishedPostmortems)
+    .where(eq(publishedPostmortems.id, postmortemId));
   need(post, 404, "Post-mortem not found.");
   const { battle } = await loadBattle(post.battleId);
   const url = `${appUrl}/postmortems/${post.slug}`;
@@ -515,19 +871,45 @@ export async function selfVerify(postmortemId: string, appUrl: string) {
   );
   await db
     .update(publishedPostmortems)
-    .set({ selfVerifiedRunId: run.id, status: "awaiting_verification", publishedAt: null })
+    .set({
+      selfVerifiedRunId: run.id,
+      status: "awaiting_verification",
+      publishedAt: null,
+    })
     .where(eq(publishedPostmortems.id, post.id));
   return run;
 }
 
 export async function onSelfVerify(run: RunRow) {
-  const [post] = await db.select().from(publishedPostmortems).where(eq(publishedPostmortems.selfVerifiedRunId, run.id));
+  const [post] = await db
+    .select()
+    .from(publishedPostmortems)
+    .where(eq(publishedPostmortems.selfVerifiedRunId, run.id));
   if (!post) return;
   if (run.status === "passed") {
-    await db.update(publishedPostmortems).set({ status: "published", publishedAt: new Date() }).where(eq(publishedPostmortems.id, post.id));
-    await logBattle(post.battleId, "publisher", `Kane CLI verified /postmortems/${post.slug} (exit 0). Article stamped as self-verified.`, { state: "PUBLISHED" });
+    const published = await db
+      .update(publishedPostmortems)
+      .set({ status: "published", publishedAt: new Date() })
+      .where(
+        and(
+          eq(publishedPostmortems.id, post.id),
+          eq(publishedPostmortems.selfVerifiedRunId, run.id),
+        ),
+      )
+      .returning({ id: publishedPostmortems.id });
+    if (!published.length) return; // The draft changed while the verifier was running.
+    await logBattle(
+      post.battleId,
+      "publisher",
+      `Kane CLI verified /postmortems/${post.slug} (exit 0). Article stamped as self-verified.`,
+      { state: "PUBLISHED" },
+    );
   } else {
-    await logBattle(post.battleId, "publisher", `Self-verification of /postmortems/${post.slug} did not pass (exit ${run.exitCode}). ${run.errorMessage || run.oneLiner || ""}`.trim());
+    await logBattle(
+      post.battleId,
+      "publisher",
+      `Self-verification of /postmortems/${post.slug} did not pass (exit ${run.exitCode}). ${run.errorMessage || run.oneLiner || ""}`.trim(),
+    );
   }
 }
 

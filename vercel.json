@@ -1,19 +1,26 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "npm install --include=dev",
-  "buildCommand": "node -e \"const p='./tsconfig.json',t=require(p);t.exclude=[...new Set([...(t.exclude||[]),'playwright.config.ts','tests','vite.config.ts'])];require('node:fs').writeFileSync(p,JSON.stringify(t,null,2)+'\\n')\" && npm run build",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "npm run build",
   "headers": [
     {
       "source": "/api/runs/:id/stream",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-transform" },
+        { "key": "Cache-Control", "value": "no-store, no-transform" },
         { "key": "X-Accel-Buffering", "value": "no" }
       ]
     },
     {
       "source": "/api/receipt/:id",
       "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
     }
   ]
 }

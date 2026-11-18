@@ -1,0 +1,527 @@
+[
+  {
+    "section": "Domain 1 · §1",
+    "title": "demo.studio winner comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 2 · §1",
+    "title": "GuardianKane workflow comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 3 · §1",
+    "title": "GuardianKane commerce comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 4 · §1",
+    "title": "KANE vs. ABLE comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 5 · §1",
+    "title": "Latch receipt comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 6 · §1",
+    "title": "kane-loop watcher comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 7 · §1",
+    "title": "Furnish ledger comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 8 · §1",
+    "title": "Agent Lighthouse repair comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 9 · §1",
+    "title": "Helix test format comparison",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 10 · §1",
+    "title": "Hack Day cohort telemetry",
+    "status": "External",
+    "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
+    "source": "User blueprint §1; upstream README.md"
+  },
+  {
+    "section": "Domain 11",
+    "title": "NDJSON stream contract",
+    "status": "Present",
+    "detail": "The worker reads JSON objects line by line; stream_start and raw payloads are persisted. Contract version and PID remain in raw payloads.",
+    "source": "worker/server.mjs; src/lib/kane.ts"
+  },
+  {
+    "section": "Domain 12",
+    "title": "Progress and surface completions",
+    "status": "Partial",
+    "detail": "Typeless numeric step lines and run_end, test_md_done, testrun_done, remote_done, and explore done are recognized. Complete remote session paths and Test Manager metadata remain in the payload rather than dedicated ledger columns.",
+    "source": "src/lib/kane.ts: classifyEvent, eventPatch"
+  },
+  {
+    "section": "Domain 13",
+    "title": "Confirmed product-bug classification",
+    "status": "Present",
+    "detail": "Result code 740 and its verdict are stored separately from exit code 1. An ordinary failed assertion is not sufficient proof of a confirmed product bug.",
+    "source": "src/lib/kane.ts; src/workspace/Execution.tsx"
+  },
+  {
+    "section": "Domain 14",
+    "title": "Unresolved variable warnings",
+    "status": "Present",
+    "detail": "Warning payloads retain variables, reasons, used_by and suggested_file. The theater displays missing names and the suggested file.",
+    "source": "src/lib/kane.ts; src/workspace/Execution.tsx"
+  },
+  {
+    "section": "Domain 15",
+    "title": "Sealed evidence archive",
+    "status": "Partial",
+    "detail": "The worker finds packs, records validation status and digest, and uploads when storage is configured. The upstream tree contains no authentic committed packs. Sample traces are not sealed evidence.",
+    "source": "worker/server.mjs: collectEvidence"
+  },
+  {
+    "section": "Domain 16",
+    "title": "Local evidence viewing",
+    "status": "Present",
+    "detail": "A genuine uploaded pack can be downloaded and opened with evidence serve. The command requires a real pack and local CLI; the sample viewer exports JSON instead.",
+    "source": "src/workspace/Evidence.tsx"
+  },
+  {
+    "section": "Domain 17",
+    "title": "Evidence merge and policy gates",
+    "status": "Partial",
+    "detail": "Policy IDs are supported for authored and batch runs. Receipt signing requires validated evidence and a passing configured policy. A merged desktop-plus-mobile pack is not implemented.",
+    "source": "worker/server.mjs; src/lib/agents.ts; src/lib/receipt.ts"
+  },
+  {
+    "section": "Domain 18",
+    "title": "Reusable testmd and cached replay",
+    "status": "Partial",
+    "detail": "Testmd jobs and reusable authored specifications are supported. The checkout template includes a shared helper. No authentic output cache is committed; replaying UI events is not native cached testmd execution.",
+    "source": "worker/server.mjs; .testmuai/tests"
+  },
+  {
+    "section": "Domain 19",
+    "title": "Noninteractive batch suites",
+    "status": "Present",
+    "detail": "The worker assembles testrun run with tags, paths, parallel workers, --agent and closed stdin. Live behavior remains dependent on the installed CLI and account.",
+    "source": "worker/server.mjs: buildCommand"
+  },
+  {
+    "section": "Domain 20",
+    "title": "Extracted final state",
+    "status": "Present",
+    "detail": "run_end.final_state is stored as JSONB and shown in the run inspector. The sample values are labelled as illustrative.",
+    "source": "src/lib/kane.ts; src/db/schema.ts; src/workspace/Execution.tsx"
+  },
+  {
+    "section": "Domain 21",
+    "title": "Network checkpoints",
+    "status": "Partial",
+    "detail": "Plain-English objectives and specs can request network checks. The worker reads HAR/NDJSON records and retains failures; live status assertions cannot be certified from the code alone.",
+    "source": "worker/server.mjs; src/lib/requirements.ts"
+  },
+  {
+    "section": "Domain 22",
+    "title": "Console checkpoints",
+    "status": "Partial",
+    "detail": "Console slices, errors, and warnings are inspected. Unpacked data is bounded, so the UI is not an unlimited console archive.",
+    "source": "worker/server.mjs: collectEvidence; src/workspace/Evidence.tsx"
+  },
+  {
+    "section": "Domain 23",
+    "title": "Core Web Vitals",
+    "status": "Partial",
+    "detail": "Specs can request LCP and CLS checks. There is no structured collector for all LCP, CLS, INP, and TTFB measurements. An objective mentioning a metric is not a measured result.",
+    "source": "src/workspace/Execution.tsx; .testmuai/tests/checkout_revenue_test.md"
+  },
+  {
+    "section": "Domain 24",
+    "title": "Cookie security assertions",
+    "status": "Partial",
+    "detail": "The test specification requests httpOnly, secure, and sameSite checks. No authentic cookie result was available in this environment.",
+    "source": "src/workspace/Execution.tsx; .testmuai/tests/checkout_revenue_test.md"
+  },
+  {
+    "section": "Domain 25",
+    "title": "Storage, clipboard, and conditional steps",
+    "status": "Partial",
+    "detail": "The authored checkout template includes cart-state, clipboard, state extraction, and conditional test-environment verification. These are specifications, not passing evidence.",
+    "source": ".testmuai/tests/checkout_revenue_test.md"
+  },
+  {
+    "section": "Domain 26",
+    "title": "Append-only Assurance context",
+    "status": "Missing",
+    "detail": "The repository stores current requirement snapshots in PostgreSQL. No committed, Kane-created .context history or context review approval proves the proposed build-time Assurance layer.",
+    "source": "src/lib/requirements.ts; src/db/schema.ts"
+  },
+  {
+    "section": "Domain 27",
+    "title": "Requirement trust states",
+    "status": "Present",
+    "detail": "Derived, trusted, and stale claims are modeled. Updating a Markdown specification reconciles its claims. Generating a test is not treated as a successful execution.",
+    "source": "src/lib/requirements.ts; src/app/api/projects/[id]/requirements/route.ts"
+  },
+  {
+    "section": "Domain 28",
+    "title": "Two-axis coverage",
+    "status": "Partial",
+    "detail": "The UI maps claims to specifications and displays trusted/active requirement coverage. The worker can request cover gaps --json. This is not a complete two-axis Test Manager reporting implementation.",
+    "source": "src/lib/requirements.ts; src/workspace/Operations.tsx; worker/server.mjs"
+  },
+  {
+    "section": "Domain 29",
+    "title": "Suite drift reconciliation",
+    "status": "Partial",
+    "detail": "A signed docs-change webhook requests maintain reconcile --plan and cover gaps. No automatic approval of new requirements or complete CLI context lifecycle is proven.",
+    "source": "src/app/api/webhooks/github/route.ts; worker/server.mjs"
+  },
+  {
+    "section": "Domain 30",
+    "title": "Multi-browser exploration",
+    "status": "Partial",
+    "detail": "The worker supports explore run --url. There is no confirmed 20-browser run, exploration-map import through explore context, or guaranteed cloud concurrency.",
+    "source": "worker/server.mjs: buildCommand"
+  },
+  {
+    "section": "Domain 31",
+    "title": "Remote HyperExecute grid",
+    "status": "Partial",
+    "detail": "Remote suite dispatch is present. Device-name flags do not change a web member into a device member; correct target frontmatter, app artifacts, plugin, credentials, and entitlement are prerequisites.",
+    "source": "worker/server.mjs; official Kane testrun guide"
+  },
+  {
+    "section": "Domain 32",
+    "title": "Real Android and iOS devices",
+    "status": "Partial",
+    "detail": "Android real-device arguments and an iOS simulator selection exist. A real iOS app/session workflow and uploaded, tested mobile application are not supplied.",
+    "source": "worker/server.mjs; src/lib/types.ts"
+  },
+  {
+    "section": "Domain 33",
+    "title": "Official GitHub Action",
+    "status": "Missing",
+    "detail": "The repository implements a webhook and Docker worker, not a checked-in LambdaTest/kane-cli-run workflow.",
+    "source": "Upstream .github/workflows inventory"
+  },
+  {
+    "section": "Domain 34",
+    "title": "Chrome CDP cold starts",
+    "status": "Present",
+    "detail": "The container sets an explicit Chrome path, skip-download flag, 60000 ms CDP timeout and two retries. A live cold-start timing measurement is not present.",
+    "source": "worker/Dockerfile; worker/server.mjs"
+  },
+  {
+    "section": "Domain 35",
+    "title": "Render execution plane",
+    "status": "Partial",
+    "detail": "Dockerfile and Render service blueprint are present. A deployed worker, remaining promotional balance, zero-cost operation and availability SLA are external matters.",
+    "source": "worker/Dockerfile; render.yaml"
+  },
+  {
+    "section": "Domain 36",
+    "title": "Realtime transport and latency",
+    "status": "Partial",
+    "detail": "Run updates use PostgreSQL-backed SSE and workspace polling. There is no Supabase Realtime channel token or demonstrated sub-100ms latency.",
+    "source": "src/app/api/runs/[id]/stream/route.ts; src/workspace/workspace.tsx"
+  },
+  {
+    "section": "Domain 37",
+    "title": "Storage and pack unpacking",
+    "status": "Partial",
+    "detail": "Optional Supabase Storage upload, screenshots, console, HAR and failure.yaml are implemented. Extraction is into a temporary directory, not in memory; no bucket is provisioned by this repository.",
+    "source": "worker/server.mjs: upload, collectEvidence"
+  },
+  {
+    "section": "Domain 38",
+    "title": "Credit conservation",
+    "status": "Partial",
+    "detail": "Instant replay consumes no live credits. Native testmd cache reuse requires actual recorded files. A shallow repository checkout does not persist new caches between worker jobs.",
+    "source": "worker/server.mjs; src/app/api/kane/trigger/route.ts"
+  },
+  {
+    "section": "Domain 39",
+    "title": "Read-only Assurance commands",
+    "status": "Partial",
+    "detail": "cover gaps is requested for docs audits. A complete fsck and design explain pipeline and exhaustive zero-credit assertions are not established.",
+    "source": "worker/server.mjs: runJob"
+  },
+  {
+    "section": "Domain 40",
+    "title": "Groq and Gemini repair providers",
+    "status": "Partial",
+    "detail": "Server-side provider clients and an evidence-informed patch proposal path exist. No paid/free model execution was performed and current free-tier quotas were not verified.",
+    "source": "src/lib/integrations.ts; src/lib/agents.ts"
+  },
+  {
+    "section": "Domain 41",
+    "title": "Three qualification bars",
+    "status": "External",
+    "detail": "Each bar needs a real end-to-end run, genuine proof, and an actual agent/referee exchange. Sample ledger data is not qualification evidence.",
+    "source": "User blueprint §5; original public/design-specification.md"
+  },
+  {
+    "section": "Domain 42",
+    "title": "Verified tie-breaker",
+    "status": "External",
+    "detail": "The UI exposes inspectable evidence. Judging weight and award decisions are not software invariants or independently confirmed by this audit.",
+    "source": "User blueprint §5.1"
+  },
+  {
+    "section": "Domain 43",
+    "title": "Closed-loop tie-breaker",
+    "status": "Partial",
+    "detail": "The state machine exists in code; a successfully deployed live loop requires worker, repository, model and signing credentials. Sample battle timelines do not prove an end-to-end cloud repair.",
+    "source": "src/lib/agents.ts; src/lib/kane.ts"
+  },
+  {
+    "section": "Domain 44",
+    "title": "Triple-layer Kane integration",
+    "status": "Partial",
+    "detail": "Runtime orchestration and post-mortem self-verification are implemented paths. Build-time requirement approval and 100% verified project coverage are not proven.",
+    "source": "src/lib/agents.ts; src/lib/requirements.ts"
+  },
+  {
+    "section": "Domain 45",
+    "title": "Patch-intent auditing",
+    "status": "Partial",
+    "detail": "The anti-cheat auditor checks file scope, test edits, removed validation and known fixture literals. It is heuristic text analysis, not an AST proof of semantic correctness.",
+    "source": "src/lib/anticheat.ts"
+  },
+  {
+    "section": "Domain 46",
+    "title": "HMAC receipts",
+    "status": "Present",
+    "detail": "Canonical signed JSON binds run IDs, commit, timestamp and the stored validated pack digest. Missing/malformed digests and failed validation are rejected. This is not independent re-hashing of an external file on every GET.",
+    "source": "src/lib/config.ts; src/lib/receipt.ts; src/app/api/receipt/[id]/route.ts"
+  },
+  {
+    "section": "Domain 47",
+    "title": "Judge fallback",
+    "status": "Partial",
+    "detail": "Credential-free, clearly labelled Nexus sample timelines support instant replay. Live records replay through SSE. The five requested genuine sealed archives and byte-for-byte stdout storage are absent; JSONB preserves events rather than original whitespace.",
+    "source": "src/lib/sample-workspace.ts; src/db/seed-replay.ts; src/app/api/runs/[id]/stream/route.ts"
+  },
+  {
+    "section": "Domain 48",
+    "title": "Meetups and follow-up",
+    "status": "External",
+    "detail": "Meetup dates and participation are outside the application and have not been independently established.",
+    "source": "User blueprint §6"
+  },
+  {
+    "section": "Domain 49",
+    "title": "B2B billing and tenancy",
+    "status": "Partial",
+    "detail": "Credit budgets and a team roster exist. The control plane is single-workspace: team roles are not tenant isolation. There is no subscription billing, tenant-scoped RLS, or demonstrated willingness to pay.",
+    "source": "src/db/schema.ts; src/workspace/Administration.tsx"
+  },
+  {
+    "section": "Domain 50",
+    "title": "Public launch posts",
+    "status": "External",
+    "detail": "Share snippets are available, but there are no verified public launch links, published engagement metrics, or submitted four-minute video. No social post was published on the operator’s behalf.",
+    "source": "src/lib/agents.ts; src/workspace/Publishing.tsx"
+  },
+  {
+    "section": "§2",
+    "title": "Concept selection",
+    "status": "Present",
+    "detail": "CHAOS-PACT is the implemented concept. DOC-TRUTH-ENGINE and SHADOW-OPS are comparison alternatives, not additional products that must be deployed.",
+    "source": "README.md; src/workspace/App.tsx"
+  },
+  {
+    "section": "§3.2",
+    "title": "Lightweight browser control plane",
+    "status": "Present",
+    "detail": "Next.js and PostgreSQL serve data and views. The browser does not run Chrome automation, Xcode, or an Android emulator. Live execution is separated into the worker.",
+    "source": "src/app; src/db; worker"
+  },
+  {
+    "section": "§3.3.1",
+    "title": "Authentication and balance preflight",
+    "status": "Partial",
+    "detail": "whoami, optional noninteractive login, and balance are present. A human-readable balance is parsed; account limits and exact remaining credits require a live account.",
+    "source": "worker/server.mjs: preflight"
+  },
+  {
+    "section": "§3.3.2–4",
+    "title": "Flow branches and completed step counts",
+    "status": "Present",
+    "detail": "Raw startup/unknown events are retained. Child IDs distinguish parallel steps, and done/failed transitions are counted instead of treating the highest step as a count.",
+    "source": "src/lib/kane.ts: classifyEvent, ingestWorkerReport"
+  },
+  {
+    "section": "§3.3.5–6",
+    "title": "Terminal and exit-code semantics",
+    "status": "Partial",
+    "detail": "The ledger distinguishes pass, failure, infrastructure error and timeout/cancellation. Not every exit 1 means a product bug: suites can break, and policy failures differ from application regressions. Automatic doctor recovery is not a complete workflow.",
+    "source": "src/lib/kane.ts; official Kane testrun guide"
+  },
+  {
+    "section": "§3.3.7–8",
+    "title": "Evidence discovery and integrity",
+    "status": "Partial",
+    "detail": "stderr hints and session/project directories are searched. Validation/digest checks guard receipt publication. File-name-based extraction still depends on archive layout; interoperability must be exercised with real packs.",
+    "source": "worker/server.mjs; src/lib/agents.ts"
+  },
+  {
+    "section": "§3.4",
+    "title": "Composable checkout specification",
+    "status": "Partial",
+    "detail": "The repository now includes an authored six-domain template, shared helper, and a platform smoke specification. Configure owned staging URLs and test fixtures before execution. No live cache or evidence is fabricated.",
+    "source": ".testmuai/tests; PRD.md"
+  },
+  {
+    "section": "§3.5.1",
+    "title": "Explore and baseline stage",
+    "status": "Partial",
+    "detail": "An EXPLORE state exists, but it does not establish a full accepted baseline and 20-browser map on every battle.",
+    "source": "src/lib/agents.ts: startSabotage"
+  },
+  {
+    "section": "§3.5.2–3",
+    "title": "Adversarial arena and referee",
+    "status": "Partial",
+    "detail": "The original worker/branch workflow is preserved. The public sample arena replays fixed data without modifying a repository. No actual product fault was injected in this audit.",
+    "source": "src/workspace/Operations.tsx; src/lib/agents.ts"
+  },
+  {
+    "section": "§3.5.4–5",
+    "title": "Repair attempts and escalation",
+    "status": "Partial",
+    "detail": "MAX_ATTEMPTS is three, with BLOCKED_NEEDS_HUMAN escalation. Patch checks and re-verification exist; there is no claimed proof of root-cause correctness, multi-worker race freedom, or full multi-target evidence merging.",
+    "source": "src/lib/types.ts; src/lib/agents.ts"
+  },
+  {
+    "section": "§3.5.6",
+    "title": "Self-verifying publication",
+    "status": "Partial",
+    "detail": "Drafting, HMAC signing, a self-check request and the verification-to-publication transition exist. Editing a draft invalidates its previous verifier run. No sample article is published as verified.",
+    "source": "src/lib/agents.ts; src/app/api/postmortems/[id]/route.ts"
+  },
+  {
+    "section": "§4.1",
+    "title": "Core schema and additive recovery",
+    "status": "Present",
+    "detail": "All six core tables plus settings and team roster are defined. The committed Drizzle baseline and a transaction-scoped advisory lock repair missing tables and columns without dropping existing rows. Incompatible types and unfillable legacy fields require operator migration.",
+    "source": "src/db/schema.ts; src/db/bootstrap.ts; drizzle/0000_workspace_baseline.sql"
+  },
+  {
+    "section": "§4.1",
+    "title": "Production tenant isolation",
+    "status": "Missing",
+    "detail": "There is no organization key on the six core tables and no per-tenant PostgreSQL policies. A private single-tenant deployment is not a multi-tenant SaaS.",
+    "source": "src/db/schema.ts"
+  },
+  {
+    "section": "§4.2.1",
+    "title": "Unified execution dispatcher",
+    "status": "Present",
+    "detail": "POST /api/kane/trigger accepts project-scoped replay and dispatches live jobs per target. It returns SSE URLs, not Supabase subscription tokens. The sample project cannot spend real credits.",
+    "source": "src/app/api/kane/trigger/route.ts; src/lib/kane.ts"
+  },
+  {
+    "section": "§4.2.2",
+    "title": "GitHub PR and documentation gates",
+    "status": "Partial",
+    "detail": "HMAC webhook verification, PR smoke jobs, reconciliation, and comments exist. PR smoke dispatch is desktop by default. Full git bisect, exact breaking-line attribution, check-run branch enforcement, and delivery deduplication are not implemented.",
+    "source": "src/app/api/webhooks/github/route.ts; src/lib/agents.ts"
+  },
+  {
+    "section": "§4.2.3",
+    "title": "Arena request boundary",
+    "status": "Partial",
+    "detail": "Scenario validation and isolated-branch orchestration exist upstream. Sample projects are restricted to replay; no remote mutation is used to demonstrate a successful battle.",
+    "source": "src/app/api/arena/sabotage/route.ts"
+  },
+  {
+    "section": "§4.2.4",
+    "title": "Evidence-guided healer",
+    "status": "Partial",
+    "detail": "Repair input includes failure context, logs, repository sources, and fixture values. It is not a guaranteed multimodal or AST-based repair, and requires external services for live operation.",
+    "source": "src/lib/agents.ts: healBattle; src/lib/anticheat.ts"
+  },
+  {
+    "section": "§4.2.5",
+    "title": "Incident post-mortem generator",
+    "status": "Partial",
+    "detail": "Articles and social snippets are generated from the ledger. A passing live re-verification and validated evidence are required before signing. The full publication path was not exercised with real Kane credentials.",
+    "source": "src/lib/agents.ts: publishPostmortem, selfVerify"
+  },
+  {
+    "section": "§4.2.6",
+    "title": "Public receipt JSON and SVG",
+    "status": "Present",
+    "detail": "Battle or linked run IDs resolve to JSON receipts or an SVG badge. Verification rechecks HMAC and stored digest; an unsigned sample never earns a verified badge.",
+    "source": "src/app/api/receipt/[id]/route.ts"
+  },
+  {
+    "section": "§5.1",
+    "title": "Four-minute demonstration",
+    "status": "External",
+    "detail": "The storyboard is a plan, not a recording. A successful demo, real mobile run, and 45-second qualification proof cannot be inferred from the interface.",
+    "source": "User blueprint §5.1"
+  },
+  {
+    "section": "§5.2",
+    "title": "Live worker safeguards",
+    "status": "Partial",
+    "detail": "Per-requester guards and reported balance checks exist. A ready remote account, durable job queue, global atomic credit reservations, sustained concurrency, and uptime remain deployment work.",
+    "source": "src/lib/kane.ts: enforceRunGuards; worker/server.mjs"
+  },
+  {
+    "section": "§6.1–4",
+    "title": "Launch kit and publishing authorization",
+    "status": "External",
+    "detail": "HN, X, Reddit and LinkedIn templates are not evidence of publication. No engagement, award eligibility, pricing promise, or future event is certified.",
+    "source": "User-supplied launch kit"
+  },
+  {
+    "section": "Recovery",
+    "title": "Schema-aware readiness",
+    "status": "Present",
+    "detail": "Health probes all columns in all eight tables. A reachable server with an incompatible schema no longer passes as a healthy workspace.",
+    "source": "src/app/api/health/route.ts"
+  },
+  {
+    "section": "Recovery",
+    "title": "Dashboard outage isolation",
+    "status": "Present",
+    "detail": "Database errors are sanitized. A disconnected workspace keeps a labelled read-only view and retry action rather than exposing SELECT statements on every route.",
+    "source": "src/lib/config.ts; src/workspace/workspace.tsx; src/workspace/Shell.tsx"
+  },
+  {
+    "section": "Deployment",
+    "title": "Reproducible Vercel build",
+    "status": "Present",
+    "detail": "The standard Next.js preset uses npm ci and npm run build. The build no longer rewrites tsconfig; the migration is traced into server functions. Hosted deployment still needs the owner’s Vercel/Postgres configuration.",
+    "source": "vercel.json; next.config.ts; tsconfig.json"
+  }
+]

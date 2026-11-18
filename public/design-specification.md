@@ -1,3 +1,5 @@
+> Historical design specification for the retained Vite prototype. The current Next.js workspace, data provenance, and deployment boundaries are documented in README.md and docs/BLUEPRINT_AUDIT.md.
+
 # CHAOS-PACT: Interior Experience Specification
 
 ## Product Intent
