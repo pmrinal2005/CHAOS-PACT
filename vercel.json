@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "next build",
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "node -e \"const p='./tsconfig.json',t=require(p);t.exclude=[...new Set([...(t.exclude||[]),'playwright.config.ts','tests','vite.config.ts'])];require('node:fs').writeFileSync(p,JSON.stringify(t,null,2)+'\\n')\" && npm run build",
   "headers": [
     {
       "source": "/api/runs/:id/stream",
