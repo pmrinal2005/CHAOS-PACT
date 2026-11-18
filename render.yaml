@@ -1,0 +1,23 @@
+# Render blueprint for the Kane execution worker (the Next.js app deploys to Vercel).
+services:
+  - type: web
+    name: chaos-pact-kane-worker
+    runtime: docker
+    rootDir: worker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: WORKER_SHARED_SECRET
+        sync: false
+      - key: LT_USERNAME
+        sync: false
+      - key: LT_ACCESS_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: evidence-packs

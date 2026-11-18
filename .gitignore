@@ -3,4 +3,9 @@ dist/
 artifacts/
 test-results/
 playwright-report/
-.DS_Store
+.DS_Store.next/
+.env
+.env.local
+next-env.d.ts
+*.tsbuildinfo
+.vercel

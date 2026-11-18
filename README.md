@@ -1,34 +1,83 @@
-# CHAOS-PACT Mission Control
+# CHAOS-PACT
 
-A responsive, local-first prototype of the CHAOS-PACT post-login workspace. The code-free interior design specification is available at `public/design-specification.md` and from **Workspace guide** inside the app.
+An adversarial revenue guard. A Red-Team saboteur breaks a chaos branch, **Kane CLI** referees it in a real
+browser, and a Blue-Team healer repairs it under an anti-cheat audit. Healed battles are sealed with an
+HMAC receipt and published as a post-mortem that Kane CLI verifies before it goes live.
 
-## Explore
-
-Start with the seeded Nexus Commerce workspace. Select a timeline tick to inspect a run, open an evidence pack to scrub its captured steps, or enter the Arena to play a controlled scenario. The project switcher includes the four-step setup wizard.
-
-The application also includes requirement coverage, verified post-mortem publishing, integration configuration, cross-device comparisons, team invitations, credit plans, and operator settings. The command palette is available with Ctrl+K or Cmd+K.
-
-## Run
-
-- `npm install` installs the dependencies.
-- `npm run dev` starts the Vite development server.
-- `npm run build` produces the production app in `dist/`.
-- `npx tsc --noEmit` checks the application types.
-- With the development server on port 5173, `npx playwright test tests/workspace.spec.ts` exercises the main workflows. Install Chromium with `npx playwright install chromium` first.
+Built on the original Mission Control workspace UI (`src/workspace/`), now served by Next.js (App Router)
+with PostgreSQL via Drizzle. Every number on screen is read from the database; a fresh workspace is empty.
 
 ## Architecture
 
-- `src/App.tsx` connects the navigation shell to the twelve workspace screens.
-- `src/workspace.tsx` owns hash navigation, project context, local persistence, execution state, credit balances, and inbox preferences.
-- `src/Dashboard.tsx` renders Mission Control and its linked telemetry widgets.
-- `src/Dialogs.tsx` contains onboarding, execution configuration, search, notifications, and the workspace guide.
-- `src/Execution.tsx`, `src/Evidence.tsx`, and `src/Operations.tsx` handle inspection and simulation workflows.
-- `src/Publishing.tsx`, `src/Administration.tsx`, and `src/Settings.tsx` contain workspace management.
-- `src/integrity.ts` signs exported local evidence payloads with Web Crypto HMAC-SHA256.
-- `src/ui.tsx` contains the shared accessible dialogs, controls, gauge, tables, and captured-frame presentation.
+```
+Browser (src/workspace, hash-routed client app)
+   |  GET /api/workspace (polling)      GET /api/runs/:id/stream (SSE, live tail or 5x replay)
+Next.js control plane (src/app/api, src/lib)  <->  PostgreSQL (src/db/schema.ts)
+   |  POST {KANE_WORKER_URL}/jobs       ^  POST /api/worker/events (NDJSON batches, evidence, exit code)
+Cloud Kane worker (worker/server.mjs, Docker)  ->  kane-cli  ->  headless Chrome / TestMu AI cloud grid
+```
 
-## Local Boundaries
+| Path | Purpose |
+| --- | --- |
+| `src/db/schema.ts` | `projects`, `kane_runs`, `ndjson_events`, `adversarial_battles`, `evidence_artifacts`, `published_postmortems` (+ settings, team) |
+| `src/lib/kane.ts` | Run dispatch, NDJSON classification (typeless step lines, surface-specific terminal events), exit-code handling, guards |
+| `src/lib/agents.ts` | Saboteur, referee state machine, healer (max 3 attempts), receipt + post-mortem + self-verification |
+| `src/lib/anticheat.ts` | Deterministic patch-intent audit (no test edits, no deleted validation, no hardcoded fixtures, scope) |
+| `worker/` | The execution worker: spawns `kane-cli`, streams stdout, validates and unpacks `.evidence` packs |
 
-Workspace data persists in this browser under the `chaos-pact-v1:` storage prefix. All executions and battle scenarios are local fixtures. URLs are validated without probing remote systems. Integration settings do not send external requests, team invites are local links, and plan changes do not process payments.
+### API
 
-Replay links embed a non-secret execution snapshot and can be opened in a separate browser. Evidence exports contain fixture metadata, step annotations, traces, and a local signature. Signing keys are demonstration credentials, not production secrets.
+| Route | What it does |
+| --- | --- |
+| `POST /api/kane/trigger` | Dispatch a run per target (`live_cloud`) or replay a sealed run's stream (`judge_instant_replay`) |
+| `POST /api/webhooks/github` | Signed PR/push webhook: PR gate, PRD/README re-ingestion, smoke suite |
+| `POST /api/arena/sabotage` | Mutate an isolated `chaos-pact/battle-*` branch, then chain the referee |
+| `POST /api/agent/heal` | Blue-Team repair with the anti-cheat audit; re-verifies; escalates after 3 attempts |
+| `POST /api/blog/publish` | Sign the receipt, write the post-mortem, dispatch Kane's self-verification |
+| `GET /api/receipt/[id]` | Recompute the HMAC receipt (JSON, or `?format=svg` badge) |
+| `POST /api/worker/events` | Worker callback (bearer `WORKER_SHARED_SECRET`) |
+
+Battle states: `EXPLORE -> SABOTAGE -> REFEREE_FAIL -> HEALING -> ANTI_CHEAT_AUDIT -> REFEREE_PASS -> PUBLISHED`,
+with `BLOCKED_NEEDS_HUMAN` as the escalation exit. Kane exit codes drive it: `0` pass, `1` product failure
+(heal), `2` setup/infrastructure (never heal), `3` timeout.
+
+## Run locally
+
+```bash
+npm install
+cp .env.example .env          # set DATABASE_URL at minimum
+npx drizzle-kit push          # create the tables
+npm run dev
+```
+
+Without a worker the app is fully usable but live runs are recorded as exit code 2 with a clear message.
+See `.env.example` for every variable.
+
+## Deploy
+
+**Control plane (Vercel).** Import the repository; `vercel.json` sets the framework and build command.
+Add the variables from `.env.example` (at least `DATABASE_URL`, `APP_BASE_URL`, `KANE_WORKER_URL`,
+`WORKER_SHARED_SECRET`, `HMAC_SECRET`). For Supabase Postgres use the pooled connection string and
+`DATABASE_SSL=no-verify`. Create the tables once:
+
+```bash
+DATABASE_URL="postgresql://..." npx drizzle-kit push --config drizzle.prod.config.ts
+```
+
+**Worker (Render or any Docker host).** `render.yaml` deploys `worker/Dockerfile` (Chrome, git, kane-cli).
+Set `WORKER_SHARED_SECRET` (same value as Vercel), `LT_USERNAME`, `LT_ACCESS_KEY`, and optionally
+`GITHUB_TOKEN` (private repos) and `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + a public
+`evidence-packs` bucket so sealed packs and screenshots can be downloaded and displayed.
+Cloud-grid devices additionally need `kane-cli plugin install remote-execution` and a plan that includes them.
+
+**GitHub.** Add a webhook to the guarded repository: payload URL `https://<app>/api/webhooks/github`,
+content type `application/json`, secret `GITHUB_WEBHOOK_SECRET`, events *Pull requests* and *Pushes*.
+Battles and PR gates test a branch deployment: set the project's preview URL template
+(for example `https://my-app-git-{branch}-my-team.vercel.app`) in Project > Settings.
+
+## Known limits
+
+- No sign-in yet: anyone who can reach the app can trigger runs (rate-limited per requester per hour).
+- Events reach the browser over server-sent events backed by Postgres rather than Supabase Realtime.
+- The evidence unpacker classifies files inside a `.evidence` archive by name (screenshots, network,
+  console, `failure.yaml`); adjust `collectEvidence` in `worker/server.mjs` if a CLI release changes the layout.

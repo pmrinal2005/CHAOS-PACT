@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "../workspace/shell.css";
+@import "../workspace/dashboard.css";
+@import "../workspace/forms.css";
+@import "../workspace/screens.css";
+@import "../workspace/admin.css";
+@import "../workspace/responsive.css";
+@import "../workspace/live.css";
