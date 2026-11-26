@@ -280,6 +280,13 @@ export function classifyEvent(payload: JsonMap) {
 const num = (v: unknown) =>
   typeof v === "number" && Number.isFinite(v) ? v : undefined;
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+/** Kane CLI 0.10.x emits result_code as a number (e.g. 720, 740); older builds used strings. */
+const code = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v)
+    ? String(v)
+    : typeof v === "string" && v
+      ? v
+      : undefined;
 
 /** Extracts run fields from surface-specific events. */
 function eventPatch(p: JsonMap): Partial<typeof kaneRuns.$inferInsert> {
@@ -295,11 +302,16 @@ function eventPatch(p: JsonMap): Partial<typeof kaneRuns.$inferInsert> {
         creditsConsumed: num(p.credits_consumed) ?? num(p.credits),
         finalStateJson: (p.final_state as JsonMap) || undefined,
         testManagerUrl: str(p.test_url),
-        resultCode: str(p.result_code),
-        bugVerdictJson: (p.verdict as JsonMap) || undefined,
+        resultCode: code(p.result_code),
+        bugVerdictJson:
+          (p.verdict as JsonMap) ||
+          (str(p.reason_code)
+            ? { reason_code: p.reason_code, result_code: code(p.result_code) ?? null }
+            : undefined),
       };
     case "test_md_done":
       return {
+        resultCode: code(p.result_code),
         durationS: num(p.duration_s),
         testManagerUrl: str(p.share_url),
         oneLiner: str(p.overall_status)

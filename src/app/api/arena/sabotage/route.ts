@@ -6,6 +6,7 @@ import {
   requesterHash,
 } from "@/lib/config";
 import { startSabotage } from "@/lib/agents";
+import { startLabSabotage } from "@/lib/lab-battle";
 import { enforceRunGuards } from "@/lib/kane";
 import { CHAOS_SCENARIOS, PLATFORMS, type ChaosScenario } from "@/lib/types";
 
@@ -44,6 +45,15 @@ export const POST = (req: Request) =>
       : undefined;
     const requester = requesterHash(req);
     await enforceRunGuards(requester, targets?.length || 1);
+    if (b.target === "lab") {
+      // Owned Chaos Lab: no repository or model key needed; Kane CLI still referees a real browser.
+      const lab = await startLabSabotage(
+        { projectId: b.projectId, scenario: b.chaosScenario as ChaosScenario, targets },
+        appUrlFor(req),
+        requester,
+      );
+      return Response.json(lab, { status: 202 });
+    }
     const result = await startSabotage(
       {
         projectId: b.projectId,

@@ -14,6 +14,7 @@ import { auditPatch, dirOf, unifiedDiff, type PatchFile } from "./anticheat";
 import { cfg, HttpError, need, signReceipt } from "./config";
 import { chatJson, GitHub } from "./integrations";
 import { logBattle, triggerRuns } from "./kane";
+import { healLab, isLabBattle } from "./lab-battle";
 import {
   MAX_ATTEMPTS,
   platformNames,
@@ -477,6 +478,8 @@ export async function healBattle(
     409,
     `Battle is ${battle.state}; there is no failing verdict to heal.`,
   );
+  // Chaos Lab battles patch the owned lab file instead of a GitHub branch.
+  if (isLabBattle(battle)) return healLab(battle, failedRunId, appUrl, feedback);
   need(battle.branch, 409, "This battle has no branch to patch.");
   need(
     battle.branch !== project.defaultBranch,

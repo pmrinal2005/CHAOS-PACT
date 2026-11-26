@@ -29,6 +29,8 @@ const CHILD_ENV = {
   KANE_CLI_CDP_TIMEOUT_MS: env.KANE_CLI_CDP_TIMEOUT_MS || "60000",
   KANE_CLI_CDP_RETRIES: env.KANE_CLI_CDP_RETRIES || "2",
 };
+const INLINE_SHOT_LIMIT = Number(env.INLINE_SCREENSHOT_LIMIT) || 6;
+const INLINE_SHOT_MAX_BYTES = 160_000;
 const GRID = {
   remote_pixel_7: ["--remote", "--device-name", "Pixel 7", "--os-version", "14"],
   ios_simulator: ["--remote", "--device-name", env.KANE_IOS_DEVICE || "iPhone 15", "--os-version", env.KANE_IOS_VERSION || "17"],
@@ -87,7 +89,8 @@ async function preflight() {
     error: who.code === 0 ? undefined : "Kane CLI is not authenticated. Set LT_USERNAME and LT_ACCESS_KEY on the worker.",
     info: {
       cliVersion: version.out.trim().split(/\s+/).pop(),
-      whoami: who.out.trim().split("\n")[0]?.slice(0, 120),
+      // whoami prints a boxed table; prefer the "User <name>" row over the box title.
+      whoami: (who.out.match(/User\s+([^\s│|]+)/)?.[1] || who.out.trim().split("\n")[0] || "").slice(0, 120),
       authenticated: who.code === 0,
       balance: amount ? Number(amount[0]) : null,
     },
@@ -175,8 +178,18 @@ function parseRecords(text) {
   }
 }
 const stepOf = (file, rec) => {
-  const n = rec?.step ?? rec?.step_index ?? rec?.stepIndex ?? file.match(/step[_-]?(\d+)/i)?.[1];
-  return n === undefined || n === null || Number.isNaN(Number(n)) ? null : Number(n);
+  // Kane 0.10.x step ids look like "0-3" (flow-ordinal) and live in tests/<slug>/steps/<ordinal>-<flow>-<ordinal>/;
+  // older packs used step_<n>. Plain numbers are accepted as-is.
+  const parse = (v) => {
+    if (v === undefined || v === null || v === "") return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    const s = String(v);
+    const pair = s.match(/^\d+-(\d+)$/);
+    if (pair) return Number(pair[1]);
+    return /^\d+$/.test(s) ? Number(s) : null;
+  };
+  return parse(rec?.ordinal) ?? parse(rec?.step) ?? parse(rec?.step_index) ?? parse(rec?.stepIndex) ??
+    parse(file.match(/steps\/(\d+)-/i)?.[1]) ?? parse(file.match(/step[_-]?(\d+)/i)?.[1]);
 };
 
 /** Steps 7-8: locate, validate, hash, upload and unpack the sealed evidence pack. */
@@ -223,15 +236,37 @@ async function collectEvidence(job, dir, stderr, sessionDir) {
     if (unzip.code > 1) return evidence;
     const net = [];
     const con = [];
+    const steps = [];
+    let inlineShots = 0;
     for (const file of await walk(unpacked)) {
       const rel = relative(unpacked, file);
       const lower = rel.toLowerCase();
       if (/\.(png|jpe?g|webp)$/.test(lower)) {
+        const type = lower.endsWith("png") ? "image/png" : lower.endsWith("webp") ? "image/webp" : "image/jpeg";
+        const data = await readFile(file);
+        if (!STORAGE) {
+          // No bucket: keep a bounded number of small step images inline so the evidence player still works.
+          if (inlineShots < INLINE_SHOT_LIMIT && data.length <= INLINE_SHOT_MAX_BYTES) {
+            inlineShots++;
+            evidence.screenshots.push({ step: stepOf(rel) ?? evidence.screenshots.length + 1, url: `data:${type};base64,${data.toString("base64")}`, annotated: /annot/.test(lower) });
+          }
+          continue;
+        }
         const url = await upload(`${prefix}/${rel.replace(/[^\w./-]/g, "_")}`, await readFile(file), lower.endsWith("png") ? "image/png" : lower.endsWith("webp") ? "image/webp" : "image/jpeg");
         if (url) evidence.screenshots.push({ step: stepOf(rel) ?? evidence.screenshots.length + 1, url, annotated: /annot/.test(lower) });
-      } else if (/failure\.ya?ml$/.test(lower)) {
+      } else if (/steps\/[^/]+\/step\.json$/.test(lower)) {
+        try {
+          const j = JSON.parse(await readFile(file, "utf8"));
+          steps.push({ step: stepOf(rel, j), kind: j.kind ?? null, status: j.status ?? null, summary: String(j.summary ?? "").slice(0, 300), ms: j.duration_ms ?? null, url: j.url ?? null });
+        } catch { /* malformed step record */ }
+      } else if (/failure\.ya?ml$/.test(lower) && !(evidence.failure && evidence.failingStepIndex !== null)) {
         const raw = (await readFile(file, "utf8")).slice(0, 8000);
         const scalars = Object.fromEntries([...raw.matchAll(/^([\w-]+):\s*(.+)$/gm)].map((m) => [m[1], m[2].replace(/^["']|["']$/g, "")]));
+        // Kane triage nests category/severity/root_cause under triage.rca; lift them for the UI and healer.
+        for (const key of ["category", "severity", "root_cause", "confidence", "message"]) {
+          const hit = raw.match(new RegExp(`^\\s+${key}:\\s*(.+)$`, "m"));
+          if (hit && !scalars[key]) scalars[key] = hit[1].replace(/^["']|["']$/g, "");
+        }
         evidence.failure = { ...scalars, raw };
         evidence.failingStepIndex = stepOf(rel, scalars);
       } else if (/network/.test(lower) && /\.(json|ndjson|jsonl|har|log)$/.test(lower)) {
@@ -255,6 +290,8 @@ async function collectEvidence(job, dir, stderr, sessionDir) {
       console: { messages: con.length, errors: con.filter((c) => /error|exception/.test(c.level)).length, warnings: con.filter((c) => /warn/.test(c.level)).length },
       screenshots: evidence.screenshots.length,
       storageConfigured: !!STORAGE,
+      steps: steps.sort((a, b) => (a.step ?? 0) - (b.step ?? 0)).slice(0, 80),
+      triage: evidence.failure ? { category: evidence.failure.category ?? null, severity: evidence.failure.severity ?? null, title: evidence.failure.title ?? null } : null,
     };
   } finally {
     await rm(unpacked, { recursive: true, force: true });

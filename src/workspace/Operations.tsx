@@ -8,6 +8,8 @@ import {
   FileCode2,
   FileText,
   Flag,
+  FlaskConical,
+  GitBranch,
   Maximize,
   Minus,
   Move,
@@ -86,6 +88,8 @@ export function Arena() {
   const [targetUrl, setTargetUrl] = useState("");
   const [objective, setObjective] = useState("");
   const [mobile, setMobile] = useState(false);
+  // "lab" = owned Chaos Lab target (needs only the worker); "repo" = GitHub branch + LLM agents.
+  const [target, setTarget] = useState<"lab" | "repo">("lab");
   const [selected, setSelected] = useState(query.id || "");
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState("");
@@ -114,8 +118,12 @@ export function Arena() {
   const missing = [
     !system?.worker &&
       "a cloud Kane worker (KANE_WORKER_URL, WORKER_SHARED_SECRET)",
-    !system?.github && "repository write access (GITHUB_TOKEN)",
-    !system?.llm && "an agent model (GROQ_API_KEY or GEMINI_API_KEY)",
+    target === "repo" &&
+      !system?.github &&
+      "repository write access (GITHUB_TOKEN)",
+    target === "repo" &&
+      !system?.llm &&
+      "an agent model (GROQ_API_KEY or GEMINI_API_KEY)",
   ].filter(Boolean);
 
   const launch = async () => {
@@ -126,7 +134,9 @@ export function Arena() {
         json: {
           projectId: project.id,
           chaosScenario: scenario,
-          targetUrl: targetUrl.trim() || undefined,
+          target,
+          targetUrl:
+            target === "repo" ? targetUrl.trim() || undefined : undefined,
           objective: objective.trim() || undefined,
           targets: mobile ? ["desktop_web", "remote_pixel_7"] : undefined,
         },
@@ -203,6 +213,44 @@ export function Arena() {
                 </span>
               </div>
             )}
+            <div
+              className="arena-target-switch"
+              role="group"
+              aria-label="Sabotage target"
+            >
+              <button
+                aria-pressed={target === "lab"}
+                onClick={() => setTarget("lab")}
+              >
+                <FlaskConical size={14} />
+                Chaos Lab (owned target)
+              </button>
+              <button
+                aria-pressed={target === "repo"}
+                onClick={() => setTarget("repo")}
+              >
+                <GitBranch size={14} />
+                Repository branch
+              </button>
+            </div>
+            {target === "lab" && (
+              <div className="lab-explainer">
+                <FlaskConical size={16} />
+                <span>
+                  The saboteur mutates this battle&apos;s copy of{" "}
+                  <code>lab/checkout.config.json</code>, which drives the
+                  public storefront at{" "}
+                  <a href="/lab/checkout" target="_blank" rel="noreferrer">
+                    /lab/checkout
+                  </a>
+                  . Kane CLI referees that live page in a real browser, the
+                  healer repairs the file under the anti-cheat audit, and a
+                  pass is sealed with an HMAC receipt. Only the cloud worker is
+                  required; a Groq or Gemini key upgrades the healer from a
+                  scoped revert to a model-written patch.
+                </span>
+              </div>
+            )}
             <div className="launch-bar">
               <label className="field">
                 Chaos scenario
@@ -232,7 +280,10 @@ export function Arena() {
                     ))}
                 </select>
               </label>
-              <label className="field branch-field">
+              <label
+                className="field branch-field"
+                style={target === "lab" ? { display: "none" } : undefined}
+              >
                 Chaos branch deployment URL
                 <input
                   type="url"
@@ -251,7 +302,10 @@ export function Arena() {
               </button>
             </div>
             <div className="form-stack" style={{ marginBottom: 20 }}>
-              <label className="field">
+              <label
+                className="field"
+                style={target === "lab" ? { display: "none" } : undefined}
+              >
                 Referee objective (optional)
                 <textarea
                   rows={2}
@@ -274,8 +328,9 @@ export function Arena() {
                   Pixel 7, Android 14 (cloud grid, --remote)
                 </label>
                 <span className="muted small-note">
-                  The saboteur commits to chaos-pact/battle-*, branched from{" "}
-                  {project.branch}. The default branch is never touched.
+                  {target === "lab"
+                    ? "Lab battles use a virtual chaos-lab/battle-* branch; the baseline lab is never modified."
+                    : `The saboteur commits to chaos-pact/battle-*, branched from ${project.branch}. The default branch is never touched.`}
                 </span>
               </div>
               {error && (

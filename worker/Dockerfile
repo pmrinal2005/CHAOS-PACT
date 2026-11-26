@@ -14,7 +14,8 @@ ENV KANE_CLI_SKIP_BROWSER_DOWNLOAD=1 \
     KANE_CLI_CDP_RETRIES=2 \
     PORT=8787
 
-RUN npm install -g @testmuai/kane-cli
+RUN npm install -g @testmuai/kane-cli \
+ && (kane-cli plugin install remote-execution || echo 'remote-execution plugin unavailable; --remote grid runs will report exit 2')
 
 WORKDIR /app
 COPY server.mjs ./

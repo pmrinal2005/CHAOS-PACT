@@ -1,6 +1,6 @@
 # CHAOS-PACT
 
-A verification control plane built on **pmrinal2005/CHAOS-PACT**, upstream commit `58512ee4024621d6f0260c2a34ca278a9a521456`. The Next.js App Router application uses the original `src/workspace/` screens, Drizzle/PostgreSQL ledger, API routes, and Docker worker. Historical Vite source is retained but is not the deployed application.
+A verification control plane built on **pmrinal2005/CHAOS-PACT**. The Next.js App Router application uses the original `src/workspace/` screens, Drizzle/PostgreSQL ledger, API routes, and Docker worker. Historical Vite source is retained but is not the deployed application.
 
 ## Start here
 

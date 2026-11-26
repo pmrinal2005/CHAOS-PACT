@@ -10,7 +10,10 @@ export function proxy(request: NextRequest) {
     path === "/api/webhooks/github" ||
     path.startsWith("/api/receipt/") ||
     path === "/postmortems" ||
-    path.startsWith("/postmortems/")
+    path.startsWith("/postmortems/") ||
+    // The Chaos Lab is the public sabotage target Kane CLI browses from the cloud.
+    path === "/lab/checkout" ||
+    path.startsWith("/api/lab/")
   )
     return NextResponse.next();
   const password = process.env.WORKSPACE_PASSWORD;
