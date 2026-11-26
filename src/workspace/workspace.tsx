@@ -1,4 +1,3 @@
-import { sampleWorkspace, SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   createContext,
   useCallback,
@@ -165,7 +164,7 @@ function useWorkspaceModel() {
       return next;
     } catch (e) {
       readOnlyView = true;
-      setData((last) => last ?? sampleWorkspace());
+      setData((last) => last);
       setLoadError(
         "Database connection paused. You can browse the read-only workspace while it reconnects.",
       );
@@ -256,10 +255,8 @@ function useWorkspaceModel() {
     if (preferences[2] && sealed)
       items.push({
         title:
-          sealed.trigger === "sample_replay"
-            ? "Sample trace available"
-            : "Evidence available",
-        text: `${sealed.label}: inspect the ${sealed.trigger === "sample_replay" ? "illustrative trace" : "run evidence"} in the vault.`,
+          "Evidence available",
+        text: `${sealed.label}: inspect the run evidence in the vault.`,
         page: "evidence",
         id: sealed.id,
         at: sealed.completedAt || sealed.at,
@@ -321,16 +318,6 @@ function useWorkspaceModel() {
   async function startRun(body: Record<string, unknown>) {
     if (!project) return false;
     if (loadError) {
-      if (
-        project.id === SAMPLE_PROJECT_ID &&
-        (body.executionMode || project.mode) === "judge_instant_replay"
-      ) {
-        go("theater", {
-          id: String(body.replayRunId || projectRuns[0]?.id),
-          replay: "1",
-        });
-        return true;
-      }
       toast("The workspace is read-only until the database reconnects.");
       return false;
     }

@@ -1,10 +1,4 @@
 import {
-  sampleWorkspace,
-  sampleDetail,
-  SAMPLE_AT,
-  SAMPLE_PROJECT_ID,
-} from "@/lib/sample-workspace";
-import {
   ArrowDownToLine,
   ArrowRight,
   ChevronLeft,
@@ -51,10 +45,6 @@ export async function readRunDetail(
   id: string,
   offline = false,
 ): Promise<RunDetail> {
-  if (offline) {
-    const run = sampleWorkspace().runs.find((r) => r.id === id);
-    if (run) return sampleDetail(run);
-  }
   return api<RunDetail>(`/api/runs/${id}`);
 }
 
@@ -165,9 +155,7 @@ export function EvidenceViewer({
         ? "The pack contained no failure.yaml."
         : "This run recorded no failure.",
     Pack:
-      run.trigger === "sample_replay"
-        ? "Illustrative sample trace.\nNo native .evidence pack exists for this example.\nUse Export sample trace to download the JSON record."
-        : evidence
+      evidence
           ? [
               `run: ${run.label}`,
               `exit_code: ${run.exitCode}`,
@@ -189,7 +177,7 @@ export function EvidenceViewer({
       wide
       className="evidence-lightbox"
       title="Evidence Viewer"
-      eyebrow={`${run.trigger === "sample_replay" ? "ILLUSTRATIVE TRACE" : "EVIDENCE ARTIFACT"} / ${run.label}`}
+      eyebrow={`EVIDENCE ARTIFACT / ${run.label}`}
       onClose={onClose}
     >
       <div className="viewer-summary">
@@ -238,7 +226,7 @@ export function EvidenceViewer({
                 mobile={isMobile(run.platform)}
                 alt={
                   current
-                    ? `${run.trigger === "sample_replay" ? "Illustrative frame" : "Kane screenshot"} at step ${current.n}: ${current.remark}`
+                    ? `Kane screenshot at step ${current.n}: ${current.remark}`
                     : "No screenshot"
                 }
                 note={
@@ -328,28 +316,7 @@ export function EvidenceViewer({
               Copy serve command
             </button>
           )}
-          {run.trigger === "sample_replay" ? (
-            <button
-              className="btn secondary"
-              disabled={!detail}
-              onClick={() =>
-                downloadFile(
-                  `${run.label}.sample.json`,
-                  JSON.stringify(
-                    {
-                      source: "illustrative replay, not sealed evidence",
-                      ...detail,
-                    },
-                    null,
-                    2,
-                  ),
-                )
-              }
-            >
-              <ArrowDownToLine size={14} />
-              Export sample trace
-            </button>
-          ) : evidence?.packUrl ? (
+          {evidence?.packUrl ? (
             <a
               className="btn secondary"
               href={evidence.packUrl}
@@ -393,7 +360,7 @@ export function EvidenceVault({ embedded = false }: { embedded?: boolean }) {
     set(arr.includes(v) ? arr.filter((s) => s !== v) : [...arr, v]);
   const filtered = sealed.filter((r) => {
     const ageDays =
-      ((project.id === SAMPLE_PROJECT_ID ? SAMPLE_AT : Date.now()) - r.at) /
+      (Date.now() - r.at) /
       86400000;
     const platform = isMobile(r.platform) ? "Mobile" : "Desktop";
     return (

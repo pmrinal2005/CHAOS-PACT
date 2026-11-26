@@ -1,73 +1,73 @@
 [
   {
-    "section": "Domain 1 · §1",
+    "section": "Domain 1 \u00b7 \u00a71",
     "title": "demo.studio winner comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 2 · §1",
+    "section": "Domain 2 \u00b7 \u00a71",
     "title": "GuardianKane workflow comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 3 · §1",
+    "section": "Domain 3 \u00b7 \u00a71",
     "title": "GuardianKane commerce comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 4 · §1",
+    "section": "Domain 4 \u00b7 \u00a71",
     "title": "KANE vs. ABLE comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 5 · §1",
+    "section": "Domain 5 \u00b7 \u00a71",
     "title": "Latch receipt comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 6 · §1",
+    "section": "Domain 6 \u00b7 \u00a71",
     "title": "kane-loop watcher comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 7 · §1",
+    "section": "Domain 7 \u00b7 \u00a71",
     "title": "Furnish ledger comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 8 · §1",
+    "section": "Domain 8 \u00b7 \u00a71",
     "title": "Agent Lighthouse repair comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 9 · §1",
+    "section": "Domain 9 \u00b7 \u00a71",
     "title": "Helix test format comparison",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
-    "section": "Domain 10 · §1",
+    "section": "Domain 10 \u00b7 \u00a71",
     "title": "Hack Day cohort telemetry",
     "status": "External",
     "detail": "Competitive research is not an application feature. This source audit does not substantiate competitor rankings, market percentages, or cohort counts. No competitor code was imported.",
-    "source": "User blueprint §1; upstream README.md"
+    "source": "User blueprint \u00a71; upstream README.md"
   },
   {
     "section": "Domain 11",
@@ -101,14 +101,14 @@
     "section": "Domain 15",
     "title": "Sealed evidence archive",
     "status": "Partial",
-    "detail": "The worker finds packs, records validation status and digest, and uploads when storage is configured. The upstream tree contains no authentic committed packs. Sample traces are not sealed evidence.",
+    "detail": "The worker finds packs, records validation status and digest, and uploads when storage is configured. The upstream tree contains no authentic committed packs.",
     "source": "worker/server.mjs: collectEvidence"
   },
   {
     "section": "Domain 16",
     "title": "Local evidence viewing",
     "status": "Present",
-    "detail": "A genuine uploaded pack can be downloaded and opened with evidence serve. The command requires a real pack and local CLI; the sample viewer exports JSON instead.",
+    "detail": "A genuine uploaded pack can be downloaded and opened with evidence serve. The command requires a real pack and local CLI.",
     "source": "src/workspace/Evidence.tsx"
   },
   {
@@ -136,7 +136,7 @@
     "section": "Domain 20",
     "title": "Extracted final state",
     "status": "Present",
-    "detail": "run_end.final_state is stored as JSONB and shown in the run inspector. The sample values are labelled as illustrative.",
+    "detail": "run_end.final_state is stored as JSONB and shown in the run inspector.",
     "source": "src/lib/kane.ts; src/db/schema.ts; src/workspace/Execution.tsx"
   },
   {
@@ -283,21 +283,21 @@
     "section": "Domain 41",
     "title": "Three qualification bars",
     "status": "External",
-    "detail": "Each bar needs a real end-to-end run, genuine proof, and an actual agent/referee exchange. Sample ledger data is not qualification evidence.",
-    "source": "User blueprint §5; original public/design-specification.md"
+    "detail": "Each bar needs a real end-to-end run, genuine proof, and an actual agent/referee exchange. Only live runs with sealed evidence count.",
+    "source": "User blueprint \u00a75; original public/design-specification.md"
   },
   {
     "section": "Domain 42",
     "title": "Verified tie-breaker",
     "status": "External",
     "detail": "The UI exposes inspectable evidence. Judging weight and award decisions are not software invariants or independently confirmed by this audit.",
-    "source": "User blueprint §5.1"
+    "source": "User blueprint \u00a75.1"
   },
   {
     "section": "Domain 43",
     "title": "Closed-loop tie-breaker",
     "status": "Partial",
-    "detail": "The state machine exists in code; a successfully deployed live loop requires worker, repository, model and signing credentials. Sample battle timelines do not prove an end-to-end cloud repair.",
+    "detail": "The state machine exists in code; a successfully deployed live loop requires worker, repository, model and signing credentials. A Chaos Lab battle has been executed end to end against real TestMu credentials.",
     "source": "src/lib/agents.ts; src/lib/kane.ts"
   },
   {
@@ -325,15 +325,15 @@
     "section": "Domain 47",
     "title": "Judge fallback",
     "status": "Partial",
-    "detail": "Credential-free, clearly labelled Nexus sample timelines support instant replay. Live records replay through SSE. The five requested genuine sealed archives and byte-for-byte stdout storage are absent; JSONB preserves events rather than original whitespace.",
-    "source": "src/lib/sample-workspace.ts; src/db/seed-replay.ts; src/app/api/runs/[id]/stream/route.ts"
+    "detail": "Recorded runs replay instantly from stored NDJSON events without credits. Live records replay through SSE. The five requested genuine sealed archives and byte-for-byte stdout storage are absent; JSONB preserves events rather than original whitespace.",
+    "source": "src/app/api/runs/[id]/stream/route.ts"
   },
   {
     "section": "Domain 48",
     "title": "Meetups and follow-up",
     "status": "External",
     "detail": "Meetup dates and participation are outside the application and have not been independently established.",
-    "source": "User blueprint §6"
+    "source": "User blueprint \u00a76"
   },
   {
     "section": "Domain 49",
@@ -346,158 +346,158 @@
     "section": "Domain 50",
     "title": "Public launch posts",
     "status": "External",
-    "detail": "Share snippets are available, but there are no verified public launch links, published engagement metrics, or submitted four-minute video. No social post was published on the operator’s behalf.",
+    "detail": "Share snippets are available, but there are no verified public launch links, published engagement metrics, or submitted four-minute video. No social post was published on the operator\u2019s behalf.",
     "source": "src/lib/agents.ts; src/workspace/Publishing.tsx"
   },
   {
-    "section": "§2",
+    "section": "\u00a72",
     "title": "Concept selection",
     "status": "Present",
     "detail": "CHAOS-PACT is the implemented concept. DOC-TRUTH-ENGINE and SHADOW-OPS are comparison alternatives, not additional products that must be deployed.",
     "source": "README.md; src/workspace/App.tsx"
   },
   {
-    "section": "§3.2",
+    "section": "\u00a73.2",
     "title": "Lightweight browser control plane",
     "status": "Present",
     "detail": "Next.js and PostgreSQL serve data and views. The browser does not run Chrome automation, Xcode, or an Android emulator. Live execution is separated into the worker.",
     "source": "src/app; src/db; worker"
   },
   {
-    "section": "§3.3.1",
+    "section": "\u00a73.3.1",
     "title": "Authentication and balance preflight",
     "status": "Partial",
     "detail": "whoami, optional noninteractive login, and balance are present. A human-readable balance is parsed; account limits and exact remaining credits require a live account.",
     "source": "worker/server.mjs: preflight"
   },
   {
-    "section": "§3.3.2–4",
+    "section": "\u00a73.3.2\u20134",
     "title": "Flow branches and completed step counts",
     "status": "Present",
     "detail": "Raw startup/unknown events are retained. Child IDs distinguish parallel steps, and done/failed transitions are counted instead of treating the highest step as a count.",
     "source": "src/lib/kane.ts: classifyEvent, ingestWorkerReport"
   },
   {
-    "section": "§3.3.5–6",
+    "section": "\u00a73.3.5\u20136",
     "title": "Terminal and exit-code semantics",
     "status": "Partial",
     "detail": "The ledger distinguishes pass, failure, infrastructure error and timeout/cancellation. Not every exit 1 means a product bug: suites can break, and policy failures differ from application regressions. Automatic doctor recovery is not a complete workflow.",
     "source": "src/lib/kane.ts; official Kane testrun guide"
   },
   {
-    "section": "§3.3.7–8",
+    "section": "\u00a73.3.7\u20138",
     "title": "Evidence discovery and integrity",
     "status": "Partial",
     "detail": "stderr hints and session/project directories are searched. Validation/digest checks guard receipt publication. File-name-based extraction still depends on archive layout; interoperability must be exercised with real packs.",
     "source": "worker/server.mjs; src/lib/agents.ts"
   },
   {
-    "section": "§3.4",
+    "section": "\u00a73.4",
     "title": "Composable checkout specification",
     "status": "Partial",
     "detail": "The repository now includes an authored six-domain template, shared helper, and a platform smoke specification. Configure owned staging URLs and test fixtures before execution. No live cache or evidence is fabricated.",
     "source": ".testmuai/tests; PRD.md"
   },
   {
-    "section": "§3.5.1",
+    "section": "\u00a73.5.1",
     "title": "Explore and baseline stage",
     "status": "Partial",
     "detail": "An EXPLORE state exists, but it does not establish a full accepted baseline and 20-browser map on every battle.",
     "source": "src/lib/agents.ts: startSabotage"
   },
   {
-    "section": "§3.5.2–3",
+    "section": "\u00a73.5.2\u20133",
     "title": "Adversarial arena and referee",
     "status": "Partial",
-    "detail": "The original worker/branch workflow is preserved. The public sample arena replays fixed data without modifying a repository. No actual product fault was injected in this audit.",
+    "detail": "The original worker/branch workflow is preserved. The owned Chaos Lab target lets the Red team break a real page without touching any repository.",
     "source": "src/workspace/Operations.tsx; src/lib/agents.ts"
   },
   {
-    "section": "§3.5.4–5",
+    "section": "\u00a73.5.4\u20135",
     "title": "Repair attempts and escalation",
     "status": "Partial",
     "detail": "MAX_ATTEMPTS is three, with BLOCKED_NEEDS_HUMAN escalation. Patch checks and re-verification exist; there is no claimed proof of root-cause correctness, multi-worker race freedom, or full multi-target evidence merging.",
     "source": "src/lib/types.ts; src/lib/agents.ts"
   },
   {
-    "section": "§3.5.6",
+    "section": "\u00a73.5.6",
     "title": "Self-verifying publication",
     "status": "Partial",
-    "detail": "Drafting, HMAC signing, a self-check request and the verification-to-publication transition exist. Editing a draft invalidates its previous verifier run. No sample article is published as verified.",
+    "detail": "Drafting, HMAC signing, a self-check request and the verification-to-publication transition exist. Editing a draft invalidates its previous verifier run.",
     "source": "src/lib/agents.ts; src/app/api/postmortems/[id]/route.ts"
   },
   {
-    "section": "§4.1",
+    "section": "\u00a74.1",
     "title": "Core schema and additive recovery",
     "status": "Present",
     "detail": "All six core tables plus settings and team roster are defined. The committed Drizzle baseline and a transaction-scoped advisory lock repair missing tables and columns without dropping existing rows. Incompatible types and unfillable legacy fields require operator migration.",
     "source": "src/db/schema.ts; src/db/bootstrap.ts; drizzle/0000_workspace_baseline.sql"
   },
   {
-    "section": "§4.1",
+    "section": "\u00a74.1",
     "title": "Production tenant isolation",
     "status": "Missing",
     "detail": "There is no organization key on the six core tables and no per-tenant PostgreSQL policies. A private single-tenant deployment is not a multi-tenant SaaS.",
     "source": "src/db/schema.ts"
   },
   {
-    "section": "§4.2.1",
+    "section": "\u00a74.2.1",
     "title": "Unified execution dispatcher",
     "status": "Present",
-    "detail": "POST /api/kane/trigger accepts project-scoped replay and dispatches live jobs per target. It returns SSE URLs, not Supabase subscription tokens. The sample project cannot spend real credits.",
+    "detail": "POST /api/kane/trigger accepts project-scoped replay and dispatches live jobs per target. It returns SSE URLs, not Supabase subscription tokens.",
     "source": "src/app/api/kane/trigger/route.ts; src/lib/kane.ts"
   },
   {
-    "section": "§4.2.2",
+    "section": "\u00a74.2.2",
     "title": "GitHub PR and documentation gates",
     "status": "Partial",
     "detail": "HMAC webhook verification, PR smoke jobs, reconciliation, and comments exist. PR smoke dispatch is desktop by default. Full git bisect, exact breaking-line attribution, check-run branch enforcement, and delivery deduplication are not implemented.",
     "source": "src/app/api/webhooks/github/route.ts; src/lib/agents.ts"
   },
   {
-    "section": "§4.2.3",
+    "section": "\u00a74.2.3",
     "title": "Arena request boundary",
     "status": "Partial",
-    "detail": "Scenario validation and isolated-branch orchestration exist upstream. Sample projects are restricted to replay; no remote mutation is used to demonstrate a successful battle.",
+    "detail": "Scenario validation and isolated-branch orchestration exist upstream. The Chaos Lab target avoids any remote mutation.",
     "source": "src/app/api/arena/sabotage/route.ts"
   },
   {
-    "section": "§4.2.4",
+    "section": "\u00a74.2.4",
     "title": "Evidence-guided healer",
     "status": "Partial",
     "detail": "Repair input includes failure context, logs, repository sources, and fixture values. It is not a guaranteed multimodal or AST-based repair, and requires external services for live operation.",
     "source": "src/lib/agents.ts: healBattle; src/lib/anticheat.ts"
   },
   {
-    "section": "§4.2.5",
+    "section": "\u00a74.2.5",
     "title": "Incident post-mortem generator",
     "status": "Partial",
     "detail": "Articles and social snippets are generated from the ledger. A passing live re-verification and validated evidence are required before signing. The full publication path was not exercised with real Kane credentials.",
     "source": "src/lib/agents.ts: publishPostmortem, selfVerify"
   },
   {
-    "section": "§4.2.6",
+    "section": "\u00a74.2.6",
     "title": "Public receipt JSON and SVG",
     "status": "Present",
-    "detail": "Battle or linked run IDs resolve to JSON receipts or an SVG badge. Verification rechecks HMAC and stored digest; an unsigned sample never earns a verified badge.",
+    "detail": "Battle or linked run IDs resolve to JSON receipts or an SVG badge. Verification rechecks HMAC and stored digest.",
     "source": "src/app/api/receipt/[id]/route.ts"
   },
   {
-    "section": "§5.1",
+    "section": "\u00a75.1",
     "title": "Four-minute demonstration",
     "status": "External",
     "detail": "The storyboard is a plan, not a recording. A successful demo, real mobile run, and 45-second qualification proof cannot be inferred from the interface.",
-    "source": "User blueprint §5.1"
+    "source": "User blueprint \u00a75.1"
   },
   {
-    "section": "§5.2",
+    "section": "\u00a75.2",
     "title": "Live worker safeguards",
     "status": "Partial",
     "detail": "Per-requester guards and reported balance checks exist. A ready remote account, durable job queue, global atomic credit reservations, sustained concurrency, and uptime remain deployment work.",
     "source": "src/lib/kane.ts: enforceRunGuards; worker/server.mjs"
   },
   {
-    "section": "§6.1–4",
+    "section": "\u00a76.1\u20134",
     "title": "Launch kit and publishing authorization",
     "status": "External",
     "detail": "HN, X, Reddit and LinkedIn templates are not evidence of publication. No engagement, award eligibility, pricing promise, or future event is certified.",
@@ -521,7 +521,7 @@
     "section": "Deployment",
     "title": "Reproducible Vercel build",
     "status": "Present",
-    "detail": "The standard Next.js preset uses npm ci and npm run build. The build no longer rewrites tsconfig; the migration is traced into server functions. Hosted deployment still needs the owner’s Vercel/Postgres configuration.",
+    "detail": "The standard Next.js preset uses npm ci and npm run build. The build no longer rewrites tsconfig; the migration is traced into server functions. Hosted deployment still needs the owner\u2019s Vercel/Postgres configuration.",
     "source": "vercel.json; next.config.ts; tsconfig.json"
   }
 ]

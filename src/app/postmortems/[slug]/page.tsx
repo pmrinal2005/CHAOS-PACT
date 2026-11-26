@@ -42,7 +42,6 @@ export default async function PostmortemPage({ params }: Props) {
   const receipt = await receiptFor(post.battleId);
   const verified =
     post.status === "published" && !!post.selfVerifiedRunId && receipt?.valid;
-  const example = post.slug === "sample-checkout-recovery";
   return (
     <main className="public-article">
       <Link href="/postmortems" className="public-back">
@@ -54,9 +53,7 @@ export default async function PostmortemPage({ params }: Props) {
         <span className={verified ? "ok" : "pending"}>
           {verified
             ? "Self-Verified by Kane CLI"
-            : example
-              ? "Illustrative sample · Not verified"
-              : "Self-verification pending"}
+            : "Self-verification pending"}
           {post.selfVerifiedRunId
             ? ` · ${shortId("RUN", post.selfVerifiedRunId)}`
             : ""}
@@ -81,11 +78,7 @@ export default async function PostmortemPage({ params }: Props) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={post.beforeScreenshotUrl}
-                alt={
-                  example
-                    ? "Illustrative checkout before repair"
-                    : "Failing step captured by Kane CLI"
-                }
+                alt="Failing step captured by Kane CLI"
               />
               <figcaption>Before: failing step</figcaption>
             </figure>
@@ -95,11 +88,7 @@ export default async function PostmortemPage({ params }: Props) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={post.afterScreenshotUrl}
-                alt={
-                  example
-                    ? "Illustrative checkout after repair"
-                    : "Final step captured by Kane CLI"
-                }
+                alt="Final step captured by Kane CLI"
               />
               <figcaption>After: re-verified</figcaption>
             </figure>

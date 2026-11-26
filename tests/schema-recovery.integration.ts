@@ -6,7 +6,6 @@ import { spawnSync } from "node:child_process";
 import { eq, sql } from "drizzle-orm";
 import { db, pool } from "../src/db";
 import { ensureSchema } from "../src/db/bootstrap";
-import { ensureSampleWorkspace } from "../src/db/seed-replay";
 import {
   projects,
   kaneRuns,
@@ -30,7 +29,6 @@ async function probe() {
     sql`insert into projects (id,name,repo_url,staging_url,prod_url) values (${pId}, 'Preserve this project', 'https://github.com/example/existing', 'https://staging.example', 'https://example.org')`,
   );
   await Promise.all([ensureSchema(), ensureSchema(), ensureSchema()]);
-  await ensureSampleWorkspace();
   const w = await loadWorkspace("http://localhost:3000");
   assert.equal(w.projects.length, 1);
   assert.equal(w.projects[0].name, "Preserve this project");

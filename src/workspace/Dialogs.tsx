@@ -1,4 +1,3 @@
-import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -486,10 +485,7 @@ function NewRun() {
                 <Rewind size={15} />
                 <span>
                   {sealed.length
-                    ? projectRuns.find((r) => r.id === replayId)?.trigger ===
-                      "sample_replay"
-                      ? "An illustrative Nexus Commerce timeline. Replays at 5× speed without credentials or credits. This is not a sealed Kane evidence pack."
-                      : "Replay recorded events at 5× speed. No additional credits are used."
+                    ? "Replay recorded events at 5× speed. No additional credits are used."
                     : "No sealed runs exist yet. Switch to Live Cloud mode to record the first one."}
                 </span>
               </div>
@@ -606,11 +602,9 @@ function Environment() {
       <div className="modal-body">
         <div className="form-note">
           <Radio size={16} />
-          {project.id === SAMPLE_PROJECT_ID
-            ? "Nexus Commerce is an illustrative replay project. Connect your own repository and a cloud worker to run live verification."
-            : system?.worker
-              ? `A cloud worker is configured${system.workerReport?.cliVersion ? ` (kane-cli ${system.workerReport.cliVersion})` : "; it has not reported in yet"}.`
-              : "No cloud worker is configured. Live runs are recorded as setup errors until KANE_WORKER_URL and WORKER_SHARED_SECRET are set."}
+          {system?.worker
+            ? `A cloud worker is configured${system.workerReport?.cliVersion ? ` (kane-cli ${system.workerReport.cliVersion})` : "; it has not reported in yet"}.`
+            : "No cloud worker is configured. Live runs are recorded as setup errors until KANE_WORKER_URL and WORKER_SHARED_SECRET are set."}
         </div>
         <div className="choice-list">
           {(
@@ -623,10 +617,6 @@ function Environment() {
               key={m}
               className={project.mode === m ? "chosen" : ""}
               onClick={async () => {
-                if (m === "live_cloud" && project.id === SAMPLE_PROJECT_ID) {
-                  setDialog("onboarding");
-                  return;
-                }
                 if (m === "live_cloud" && !system?.worker) {
                   setDialog(null);
                   go("integrations");
@@ -638,9 +628,7 @@ function Environment() {
             >
               <I size={17} />
               <span>
-                {m === "live_cloud" && project.id === SAMPLE_PROJECT_ID
-                  ? "Connect a live project"
-                  : label}
+                {label}
               </span>
               {project.mode === m && <Check size={15} />}
             </button>
@@ -676,8 +664,7 @@ export function Dialogs() {
         <div className="modal-body">
           <p className="description">
             A verification workspace for inspecting executions, evidence, and
-            repair outcomes. Nexus Commerce is a labelled sample; connected
-            projects keep their own live run ledgers.
+            repair outcomes. Every project keeps its own live run ledger.
           </p>
           {(
             [
@@ -689,7 +676,7 @@ export function Dialogs() {
               [
                 Layers3,
                 "Inspect the evidence",
-                "Inspect network and console records in the viewer. Download a genuine uploaded pack, or export a sample trace as clearly labelled JSON.",
+                "Inspect network and console records in the viewer. Download a genuine uploaded pack,.",
               ],
               [
                 Swords,

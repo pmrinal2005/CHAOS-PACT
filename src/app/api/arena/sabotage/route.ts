@@ -18,11 +18,6 @@ export const POST = (req: Request) =>
   handle(async () => {
     const b = await req.json();
     need(
-      b.projectId !== "c0aa5000-0000-4000-8000-000000000001",
-      409,
-      "Sample projects are replay-only. Inspect a recorded battle in the arena.",
-    );
-    need(
       process.env.WORKSPACE_PASSWORD,
       403,
       "Live branch changes are locked on public deployments.",

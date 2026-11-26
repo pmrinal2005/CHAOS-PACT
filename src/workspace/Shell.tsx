@@ -39,7 +39,6 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dot, Logo } from "./ui";
 import { pageNames, useWorkspace, type Page } from "./workspace";
-import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 
 export const navigation: [Page, LucideIcon][] = [
   ["dashboard", LayoutDashboard],
@@ -72,7 +71,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [menu, setMenu] = useState<"project" | "profile" | "mode" | null>(null);
   const shell = useRef<HTMLDivElement>(null);
-  const sample = w.project?.id === SAMPLE_PROJECT_ID;
   const live = w.project?.mode === "live_cloud";
   const name = w.operator.name || "Workspace operator";
   const initials = w.operator.name
@@ -353,12 +351,6 @@ export function Shell({ children }: { children: ReactNode }) {
               <ShieldCheck size={15} />
               <span>Read-only view · Database connection paused.</span>
               <button onClick={() => w.refresh()}>Reconnect</button>
-            </div>
-          )}
-          {sample && w.page !== "dashboard" && (
-            <div className="cs-sample-strip">
-              <span className="tiny-square" /> SAMPLE WORKSPACE{" "}
-              <span>Illustrative replay data · No live credits used</span>
             </div>
           )}
           {children}

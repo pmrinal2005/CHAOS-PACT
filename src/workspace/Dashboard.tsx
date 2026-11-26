@@ -38,7 +38,6 @@ import {
 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { CountUp, LoopOrbit } from "./motion";
-import { SAMPLE_AT, SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import { duration, stageIndex, stateLabel, battleBlocked, time, useProject, type Run } from "./workspace";
 
 type Point = [number, number];
@@ -279,8 +278,7 @@ export function Dashboard() {
   } = useProject();
   const [hours, setHours] = useState(24),
     [runFilter, setRunFilter] = useState("all");
-  const sample = project.id === SAMPLE_PROJECT_ID,
-    end = sample ? SAMPLE_AT : Date.now(),
+  const end = Date.now(),
     span = hours * 3600000,
     start = end - span;
   const runs = useMemo(
@@ -356,7 +354,7 @@ export function Dashboard() {
       open: () => go("project", { tab: "Run history", filter: "healed" }),
     },
   ];
-  const liveRecords = projectRuns.filter((r) => r.trigger !== "sample_replay");
+  const liveRecords = projectRuns.filter((r) => true);
   const qualification = [
     {
       label: "Works end to end",
@@ -372,7 +370,7 @@ export function Dashboard() {
       label: "Agent and Kane talked",
       hint: "A healed battle carries an HMAC receipt",
       ok: projectBattles.some(
-        (b) => b.mode !== "sample_replay" && b.attempts > 0 && !!b.receiptHash,
+        (b) => b.attempts > 0 && !!b.receiptHash,
       ),
     },
   ];
@@ -396,9 +394,7 @@ export function Dashboard() {
       icon: Cpu,
       text: workerReport?.cliVersion
         ? `kane-cli v${workerReport.cliVersion}`
-        : sample
-          ? "Replay engine"
-          : "kane-cli worker pending",
+        : "kane-cli worker pending",
       tone: workerReport?.cliVersion ? "ok" : "warn",
     },
     {
@@ -512,8 +508,8 @@ export function Dashboard() {
         <div>
           <span className="section-mark" />
           <h2>Telemetry overview</h2>
-          <span className={`snapshot-tag ${sample ? "" : "live"}`}>
-            {sample ? "SAMPLE DATA" : "LIVE WORKSPACE"}
+          <span className="snapshot-tag live">
+            LIVE WORKSPACE
           </span>
         </div>
         <label className="mc-select">
@@ -599,8 +595,7 @@ export function Dashboard() {
                   : `${3 - qualified} bar${qualified === 2 ? "" : "s"} to clear`}
               </strong>
               <p>
-                Only live runs with sealed evidence count. Sample replays never
-                qualify.
+                Only live runs with sealed evidence count toward a bar.
               </p>
             </div>
           </div>
@@ -746,7 +741,7 @@ export function Dashboard() {
               <Swords size={16} />
               <h2>Adversarial arena</h2>
             </div>
-            <span className="arena-chip">{sample ? "REPLAY" : "LIVE"}</span>
+            <span className="arena-chip">LIVE</span>
           </div>
           <button
             className="arena-preview"
@@ -812,7 +807,7 @@ export function Dashboard() {
           <p>
             {project.covered} of{" "}
             {project.requirements.filter((r) => r.trust !== "stale").length}{" "}
-            {sample ? "sample " : ""}requirements trusted
+            requirements trusted
           </p>
           <button onClick={() => go("coverage")}>
             Inspect coverage
@@ -851,11 +846,9 @@ export function Dashboard() {
         </span>
         <span>
           <Box size={11} />
-          {sample
-            ? "Illustrative replay workspace"
-            : system?.worker
-              ? `Cloud worker configured${workerReport?.whoami ? ` · ${workerReport.whoami}` : ""}`
-              : "Local control plane"}
+          {system?.worker
+            ? `Cloud worker configured${workerReport?.whoami ? ` · ${workerReport.whoami}` : ""}`
+            : "Local control plane"}
         </span>
       </div>
     </div>

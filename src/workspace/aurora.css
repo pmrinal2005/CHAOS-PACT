@@ -43,8 +43,13 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
+  word-spacing: 0.12em;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
 }
+h1, h2, h3, h4, button, a, label, strong, b { word-spacing: 0.14em; }
+code, pre, .mono, [class*="mono"] { word-spacing: 0; }
 button,
 select,
 input,

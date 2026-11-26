@@ -1,56 +1,40 @@
 # CHAOS-PACT
 
-A verification control plane built on **pmrinal2005/CHAOS-PACT**. The Next.js App Router application uses the original `src/workspace/` screens, Drizzle/PostgreSQL ledger, API routes, and Docker worker. Historical Vite source is retained but is not the deployed application.
+Adversarial revenue guard for the KaneCLI Online Hackathon, built on **pmrinal2005/CHAOS-PACT**: a Next.js 16 App Router control plane, Drizzle/PostgreSQL ledger and a Docker worker that drives **Kane CLI (`@testmuai/kane-cli` 0.10.x)**.
 
-## Start here
+A Red-Team saboteur breaks a target, Kane CLI referees it in a real browser (DevTools network/console/cookie assertions, `result_code: 740` bug classification, sealed `.evidence` packs), a Blue-Team healer repairs it under an anti-cheat patch-intent audit, Kane re-verifies, an HMAC-SHA256 receipt is signed and a post-mortem is published and self-verified by Kane.
 
-- **Mission Control:** execution metrics, interactive time ranges, status filters, and run drill-down.
-- **Run ledger / theater:** inspect progress, terminal events, exit codes, warnings, and extracted values. Replay a timeline or export a sample JSON trace.
-- **Arena / evidence / coverage:** inspect battle history, per-step traces, and requirement relationships.
-- **Blueprint audit:** 75 source-referenced findings covering the 50 research tracks and implementation sections. Search, filter, and export the report in the workspace, or read [the complete audit](docs/BLUEPRINT_AUDIT.md).
-- **[Deploy to Vercel](docs/DEPLOYMENT.md)** and **[validation notes](docs/VALIDATION.md)**.
+## No mock data
 
-## The dashboard failure and repair
+The workspace starts **empty**. Every run, event, battle, receipt and post-mortem is produced by a real Kane CLI execution on the worker. There is no seeded or sample dataset; if the database is unreachable the UI says so and stays read-only instead of showing placeholders.
 
-The original health route checked only `SELECT 1`; the workspace read selected every ORM column across eight tables. A database could therefore look healthy while a missing table or an old `projects` definition broke every screen. The browser printed the raw Drizzle error and globally blocked navigation. That error alone does not prove which connection, permission, or schema problem exists on a particular external deployment.
+## Dashboard
 
-The repair has four parts:
+Aurora design system (`src/workspace/aurora.css`, `mission.css`), fonts self-hosted through `next/font` (Plus Jakarta Sans, Space Grotesk, JetBrains Mono), animated Mission Control with a live loop orbit, activity ticker, count-up metrics, qualification ring and DevTools domain map. Responsive from phones (drawer navigation) to wide desktops. Hash-routed screens: Mission Control, Run ledger / theater, Adversarial arena, Evidence vault, Coverage map, Post-mortems, Integrations, Device grid, Team, Billing, Settings, Blueprint audit.
 
-1. A committed Drizzle baseline and **additive, transaction-locked schema preparation**. The first request checks the expected columns; missing tables and columns are added without dropping existing data. Incompatible legacy values are not silently rewritten.
-2. `/api/health` selects the complete shape of all eight tables with `LIMIT 0`. An unusable schema returns HTTP 503, not a false green status.
-3. Bounded PostgreSQL connection timeouts and sanitized API errors. Visitors never need a raw SQL statement to understand an outage.
-4. A labelled read-only workspace during connection failures, with retry and recovery. Successful reads replace the fallback; changes are not claimed as saved while offline.
+## Chaos Lab
 
-## Data provenance
-
-An **empty** database receives the repository’s Nexus Commerce demonstration project: 128 illustrative executions, eight example battle histories, and eight inspectable sample traces. Sample data has a fixed capture window, is labelled throughout the UI, costs zero credits, and cannot receive HMAC verification receipts. The chart range is relative to that sample window, not today's time. Existing nonempty databases are never replaced. Set `WORKSPACE_SAMPLE_DATA=false` before first boot for an empty production workspace.
-
-**A sample trace is not an authentic `.evidence` file.** Samples download as `.sample.json`. No genuine sealed Kane pack, native CLI cache, successful paid cloud run, or hackathon qualification is fabricated. Native replay and signed publication require actual worker-produced evidence. The worker's event data is JSONB; it preserves parsed payloads, not original stdout byte formatting.
+`/lab/checkout` is an owned, public sabotage target. Each battle gets its own copy of `lab/checkout.config.json`; the Red team injects a catalogued fault (silent API 500, mobile CTA overlay, console crash, cookie flag stripping, README pricing lie), Kane CLI referees the live page, the healer patches the file (Groq/Gemini when a key is set, otherwise a scoped rule-based revert) and the anti-cheat audit checks the diff. No repository or model key is needed.
 
 ## Local operation
 
-1. Install the locked dependencies with `npm ci --include=dev`.
-2. Copy `.env.example` to `.env` and supply `DATABASE_URL` for your PostgreSQL database. Keep credentials private.
-3. Start with `npm run dev`. A fresh/local database with DDL permission prepares itself automatically. Alternatively, run `npx tsx scripts/prepare-database.ts` once using a migration role.
-4. Visit `/`, `/api/health` and `/#/audit`.
+1. `npm ci --include=dev`
+2. Copy `.env.example` to `.env` and set `DATABASE_URL`. The schema is prepared additively on first request (or run `npx tsx scripts/prepare-database.ts`).
+3. `npm run dev`, then open `/` and `/api/health`.
+4. For live runs start the worker (`worker/`, needs Chrome + `@testmuai/kane-cli` + `LT_USERNAME`/`LT_ACCESS_KEY`) and set `KANE_WORKER_URL`, `WORKER_SHARED_SECRET` and `WORKSPACE_PASSWORD` on the control plane.
 
-No external service is needed to inspect the sample, connect project metadata, edit settings, or browse the audit. Live execution is separate. Use an owned staging application, a private workspace and a trusted worker with operator-configured secrets. Never connect production credentials to an unprotected public demo.
+## Deployment
 
-## Architecture and boundaries
+Control plane: Vercel (`vercel.json`). Worker: Render (`render.yaml`, `worker/Dockerfile`). Database: any PostgreSQL (Supabase pooled URL works). See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/SETUP.md](docs/SETUP.md).
 
-- `src/db/schema.ts`, `src/db/bootstrap.ts`, `drizzle/`: six core tables plus team and settings; non-destructive initial preparation.
-- `src/app/api/`, `src/lib/`: run dispatch, typed/typeless event handling, evidence, policy gates, receipts, and post-mortem drafts.
-- `src/workspace/`: hash-routed application, command palette, responsive navigation, search, filters, evidence inspection and administration.
-- `worker/`, `render.yaml`: optional offloaded Kane execution. Browser updates use **PostgreSQL-backed SSE**, not Supabase Realtime.
-- `.testmuai/tests/`: authored checkout and workspace templates. These are not claimed to have been authored or passed by Kane. Configure the approved target and variables before use.
-- `src/proxy.ts`: optional HTTP Basic protection for a **single-tenant** operator workspace. The username is `operator`; the password comes only from `WORKSPACE_PASSWORD`.
+## CI gate
 
-Important remaining gaps include tenant-scoped RLS, five authentic committed evidence packs, full AST-based repair auditing, automatic `git bisect`, cross-target native pack merging, and proven live mobile/20-browser execution. A device name alone does not make a web suite mobile. Social posts, a demo video, event eligibility, cost guarantees, third-party quotas and winner claims are external deliverables. See the audit rather than assuming the blueprint is fully implemented.
+`.github/workflows/chaos-pact-gate.yml` runs `LambdaTest/kane-cli-run@v1` on pull requests, Vercel deployments and manual dispatch, with the sealed evidence pack uploaded as an artifact.
 
 ## Verification
 
-Run type generation, `npm exec tsc -- --noEmit --pretty false`, and `npm run build`. Start the production preview, then `npx playwright test`. The browser suite uses `TEST_BASE_URL` (default `http://127.0.0.1:3000`) and the seeded sample project.
+`npx next typegen`, `npm exec tsc -- --noEmit`, `npm run build`, then with a running server `npx playwright test` (`TEST_BASE_URL`, `WORKSPACE_PASSWORD` if protected). `npx tsx tests/schema-recovery.integration.ts` exercises legacy-schema recovery on a disposable local database. See [docs/VALIDATION.md](docs/VALIDATION.md).
 
-`npx tsx tests/schema-recovery.integration.ts` creates a uniquely named disposable database on the **local cluster only**, reproduces a legacy schema, verifies data retention and strict receipt checks, and drops only that test database. It requires local database-creation permission.
+## Boundaries
 
-The upstream Vite prototype tests are preserved in `tests/legacy/`. They target a different UI/data model and are not represented as passing Next.js tests.
+Tenant-scoped RLS, `git bisect` automation, cross-target native evidence merging and 20-browser `explore` runs on the grid depend on external entitlements; see the Blueprint audit screen for the per-requirement status.

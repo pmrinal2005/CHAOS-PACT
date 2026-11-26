@@ -714,11 +714,9 @@ export async function publishPostmortem(battleId: string, appUrl: string) {
   const evBefore = evidence.find((e) => e.runId === battle.beforeRunId);
   const evAfter = evidence.find((e) => e.runId === battle.afterRunId);
   need(
-    after?.exitCode === 0 &&
-      after.status === "passed" &&
-      after.trigger !== "sample_replay",
+    after?.exitCode === 0 && after.status === "passed",
     409,
-    "Publication requires a passing live verification, not a sample replay.",
+    "Publication requires a passing live verification.",
   );
   need(
     evAfter?.validationExitCode === 0 &&

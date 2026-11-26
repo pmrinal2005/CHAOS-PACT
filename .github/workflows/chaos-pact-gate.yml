@@ -1,0 +1,56 @@
+name: CHAOS-PACT revenue guard
+
+# Gate pull requests and Vercel preview deployments with a real Kane CLI browser run.
+# Secrets required (repository settings -> Secrets and variables -> Actions):
+#   LT_USERNAME, LT_ACCESS_KEY   TestMu AI credentials (Settings > Keys in the TestMu dashboard)
+on:
+  pull_request:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Base URL to verify (defaults to the production app)"
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  checkout-smoke:
+    # For deployment_status events only run once the deployment is successful.
+    if: github.event_name != 'deployment_status' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET_URL: ${{ github.event.deployment_status.target_url || github.event.inputs.url || 'https://chaos-pact.vercel.app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the Chaos Lab checkout (DevTools network, console, cookies)
+        uses: LambdaTest/kane-cli-run@v1
+        with:
+          objective: >-
+            Open ${{ env.TARGET_URL }}/lab/checkout, click the 'Pay now' button, verify that the
+            text 'Order confirmed' becomes visible within 15 seconds, and assert that no network
+            request returned a 5xx status and that the browser console shows no errors.
+          url: ${{ env.TARGET_URL }}/lab/checkout
+          timeout: "240"
+          username: ${{ secrets.LT_USERNAME }}
+          access-key: ${{ secrets.LT_ACCESS_KEY }}
+          extra-args: "--bug-detection continue"
+
+  committed-suite:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run committed _test.md specifications
+        uses: LambdaTest/kane-cli-run@v1
+        with:
+          test-files: ".testmuai/tests/*_test.md"
+          parallel: "2"
+          username: ${{ secrets.LT_USERNAME }}
+          access-key: ${{ secrets.LT_ACCESS_KEY }}

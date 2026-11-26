@@ -21,7 +21,7 @@ export function BlueprintAudit() {
       [
         "# CHAOS-PACT implementation audit",
         "Upstream: pmrinal2005/CHAOS-PACT @ 58512ee",
-        "Present means an inspected implementation exists, not a successful paid cloud execution. Sample records are illustrative, never sealed Kane evidence.",
+        "Present means an inspected implementation exists, not a successful paid cloud execution.",
         ...findings.map(
           (f) =>
             `## ${f.section} · ${f.title}\n**${f.status}** — ${f.detail}\n\nSource: ${f.source}`,

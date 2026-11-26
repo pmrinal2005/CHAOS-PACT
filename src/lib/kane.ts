@@ -121,11 +121,6 @@ export async function triggerRuns(
     .from(projects)
     .where(eq(projects.id, input.projectId));
   need(project, 404, "Project not found.");
-  need(
-    project.id !== "c0aa5000-0000-4000-8000-000000000001",
-    409,
-    "This is a sample replay project. Connect your own project to execute a live verification.",
-  );
   const c = cfg();
   if (c.workerUrl) {
     need(

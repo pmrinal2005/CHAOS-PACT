@@ -1,4 +1,3 @@
-import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   ArrowUpRight,
   Bot,
@@ -244,8 +243,7 @@ export function Devices() {
                   >
                     Open latest run <ArrowUpRight size={12} />
                   </button>
-                  {platform !== "desktop_web" &&
-                    project.id !== SAMPLE_PROJECT_ID && (
+                  {platform !== "desktop_web" && (
                       <button
                         className="btn secondary compact"
                         disabled={!latestDesktop || !!busy}

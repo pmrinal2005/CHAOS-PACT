@@ -30,7 +30,7 @@ export const POST = (req: Request) =>
         : "live_cloud";
 
     if (mode === "judge_instant_replay") {
-      // Replays the project-owned event timeline, preserving explicit sample provenance.
+      // Replays the project-owned, recorded event timeline.
       const hasEvents = sql`exists (select 1 from ${ndjsonEvents} where ${ndjsonEvents.runId} = ${kaneRuns.id})`;
       const [run] = await db
         .select()

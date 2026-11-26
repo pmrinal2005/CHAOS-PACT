@@ -12,16 +12,16 @@ The checked-in configuration was validated against https://openapi.vercel.sh/ver
 2. Prefer verified TLS (`DATABASE_SSL=require`) with the provider's required CA. The legacy `no-verify` option exists only for compatibility; it does not verify the server identity.
 3. Back up an existing database. On a trusted host, run `npx tsx scripts/prepare-database.ts` with the migration-role URL. The transactional additive upgrade is also automatic on the first request when `WORKSPACE_AUTO_MIGRATE` is not `false`. No `DROP` or force push is part of the automatic upgrade.
 4. After provisioning, use a least-privileged runtime role with read/write/sequence access, and set `WORKSPACE_AUTO_MIGRATE=false`. Run migrations explicitly before future schema releases. If required legacy columns cannot be safely populated, preparation rolls back and an operator must map their values.
-5. Set `WORKSPACE_SAMPLE_DATA=false` for a new real workspace, or allow the labelled sample for a demonstration. A seeded sample is never created over existing projects.
+5. The workspace starts empty: there is no sample or mock data. Create a project in the UI and run a Chaos Lab battle to produce real records.
 6. Redeploy after changing environment variables. Open `/api/health`: expect HTTP 200, `schema: ready`, eight tables. Then open `/api/workspace`: expect the projects, runs, battles, and settings JSON, not an HTML login page or SQL error.
 
 If health fails, check DNS, TLS, connection pool limits, role/table permissions, and that the connection points to the migrated database. A healthy Postgres socket does not prove the schema is compatible. For an intentionally restricted runtime role, use the migration role to resolve missing columns rather than granting the application superuser access.
 
 ## Private and live operation
 
-- **Protect all real workspaces** with a long random `WORKSPACE_PASSWORD` over HTTPS. Username: `operator`. Keep a public judge sample on a separate, credential-free deployment and database. This is a single-workspace access boundary, not multi-tenant authentication.
+- **Protect all real workspaces** with a long random `WORKSPACE_PASSWORD` over HTTPS. Username: `operator`.  This is a single-workspace access boundary, not multi-tenant authentication.
 - Set a fixed `APP_BASE_URL` to the trusted public origin. Never use an untrusted request host to configure worker callbacks. Time-limited preview hostnames must match the deployment actually being tested.
-- Set `KANE_WORKER_URL` and matching server-side `WORKER_SHARED_SECRET` on the control plane and worker. Add `LT_USERNAME` and `LT_ACCESS_KEY` **only on the worker**. Real runs are not available without a protected workspace; sample projects are always replay-only.
+- Set `KANE_WORKER_URL` and matching server-side `WORKER_SHARED_SECRET` on the control plane and worker. Add `LT_USERNAME` and `LT_ACCESS_KEY` **only on the worker**. Real runs are not available without a protected workspace.
 - Configure `HMAC_SECRET` with a high-entropy secret. Legacy receipts cease to validate if it is replaced. Do not expose it with `NEXT_PUBLIC_`.
 - Optional integrations: a repository-scoped `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET`, a supported model provider key, and the storage credentials documented in `.env.example`. Avoid public uploads of session tokens, personal information, or private test traces. Configure storage access controls separately.
 - `/api/worker/events` uses its own bearer authentication. `/api/webhooks/github` verifies the raw signed payload. Public receipt and article routes intentionally remain readable to the verifier. Do not put confidential incident details in public articles.

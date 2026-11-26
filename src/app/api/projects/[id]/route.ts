@@ -32,13 +32,6 @@ export const PATCH = (req: Request, { params }: Ctx) =>
       }
     if (typeof b.previewUrlTemplate === "string")
       set.previewUrlTemplate = b.previewUrlTemplate.trim() || null;
-    need(
-      !(
-        id === "c0aa5000-0000-4000-8000-000000000001" && b.mode === "live_cloud"
-      ),
-      409,
-      "Sample projects are replay-only. Connect a live project first.",
-    );
     if (b.mode === "live_cloud" || b.mode === "judge_instant_replay")
       set.executionMode = b.mode;
     if (typeof b.archived === "boolean") set.archived = b.archived;

@@ -57,7 +57,7 @@ export const toRun = (
     r.status === "passed" && r.role === "after" ? "healed" : (r.status as RunDisplay);
   return {
     id: r.id,
-    label: r.trigger === "sample_replay" ? `RUN-${String(Number(r.id.slice(0, 8))).padStart(4, "0")}` : shortId("RUN", r.id),
+    label: shortId("RUN", r.id),
     projectId: r.projectId,
     battleId: r.battleId,
     name: r.name,

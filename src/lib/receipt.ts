@@ -41,8 +41,7 @@ export async function receiptFor(id: string) {
     valid:
       signatureValid &&
       evidenceDigestMatches &&
-      runBindingsMatch &&
-      battle.battleMode !== "sample_replay",
+      runBindingsMatch,
     runBindingsMatch,
     signed,
     signatureValid,

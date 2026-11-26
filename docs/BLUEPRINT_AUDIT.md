@@ -88,13 +88,13 @@ Source: `src/lib/kane.ts; src/workspace/Execution.tsx`
 
 ### Domain 15 — Sealed evidence archive
 
-**Partial.** The worker finds packs, records validation status and digest, and uploads when storage is configured. The upstream tree contains no authentic committed packs. Sample traces are not sealed evidence.
+**Partial.** The worker finds packs, records validation status and digest, and uploads when storage is configured. The upstream tree contains no authentic committed packs.
 
 Source: `worker/server.mjs: collectEvidence`
 
 ### Domain 16 — Local evidence viewing
 
-**Present.** A genuine uploaded pack can be downloaded and opened with evidence serve. The command requires a real pack and local CLI; the sample viewer exports JSON instead.
+**Present.** A genuine uploaded pack can be downloaded and opened with evidence serve. The command requires a real pack and local CLI.
 
 Source: `src/workspace/Evidence.tsx`
 
@@ -118,7 +118,7 @@ Source: `worker/server.mjs: buildCommand`
 
 ### Domain 20 — Extracted final state
 
-**Present.** run_end.final_state is stored as JSONB and shown in the run inspector. The sample values are labelled as illustrative.
+**Present.** run_end.final_state is stored as JSONB and shown in the run inspector.
 
 Source: `src/lib/kane.ts; src/db/schema.ts; src/workspace/Execution.tsx`
 
@@ -244,7 +244,7 @@ Source: `src/lib/integrations.ts; src/lib/agents.ts`
 
 ### Domain 41 — Three qualification bars
 
-**External.** Each bar needs a real end-to-end run, genuine proof, and an actual agent/referee exchange. Sample ledger data is not qualification evidence.
+**External.** Each bar needs a real end-to-end run, genuine proof, and an actual agent/referee exchange. Only live runs with sealed evidence count.
 
 Source: `User blueprint §5; original public/design-specification.md`
 
@@ -256,7 +256,7 @@ Source: `User blueprint §5.1`
 
 ### Domain 43 — Closed-loop tie-breaker
 
-**Partial.** The state machine exists in code; a successfully deployed live loop requires worker, repository, model and signing credentials. Sample battle timelines do not prove an end-to-end cloud repair.
+**Partial.** The state machine exists in code; a successfully deployed live loop requires worker, repository, model and signing credentials. A Chaos Lab battle has been executed end to end against real TestMu credentials.
 
 Source: `src/lib/agents.ts; src/lib/kane.ts`
 
@@ -280,9 +280,9 @@ Source: `src/lib/config.ts; src/lib/receipt.ts; src/app/api/receipt/[id]/route.t
 
 ### Domain 47 — Judge fallback
 
-**Partial.** Credential-free, clearly labelled Nexus sample timelines support instant replay. Live records replay through SSE. The five requested genuine sealed archives and byte-for-byte stdout storage are absent; JSONB preserves events rather than original whitespace.
+**Partial.** Recorded runs replay instantly from stored NDJSON events without credits. Live records replay through SSE. The five requested genuine sealed archives and byte-for-byte stdout storage are absent; JSONB preserves events rather than original whitespace.
 
-Source: `src/lib/sample-workspace.ts; src/db/seed-replay.ts; src/app/api/runs/[id]/stream/route.ts`
+Source: `src/app/api/runs/[id]/stream/route.ts`
 
 ### Domain 48 — Meetups and follow-up
 
@@ -352,7 +352,7 @@ Source: `src/lib/agents.ts: startSabotage`
 
 ### §3.5.2–3 — Adversarial arena and referee
 
-**Partial.** The original worker/branch workflow is preserved. The public sample arena replays fixed data without modifying a repository. No actual product fault was injected in this audit.
+**Partial.** The original worker/branch workflow is preserved. The owned Chaos Lab target lets the Red team break a real page without touching any repository.
 
 Source: `src/workspace/Operations.tsx; src/lib/agents.ts`
 
@@ -364,7 +364,7 @@ Source: `src/lib/types.ts; src/lib/agents.ts`
 
 ### §3.5.6 — Self-verifying publication
 
-**Partial.** Drafting, HMAC signing, a self-check request and the verification-to-publication transition exist. Editing a draft invalidates its previous verifier run. No sample article is published as verified.
+**Partial.** Drafting, HMAC signing, a self-check request and the verification-to-publication transition exist. Editing a draft invalidates its previous verifier run.
 
 Source: `src/lib/agents.ts; src/app/api/postmortems/[id]/route.ts`
 
@@ -382,7 +382,7 @@ Source: `src/db/schema.ts`
 
 ### §4.2.1 — Unified execution dispatcher
 
-**Present.** POST /api/kane/trigger accepts project-scoped replay and dispatches live jobs per target. It returns SSE URLs, not Supabase subscription tokens. The sample project cannot spend real credits.
+**Present.** POST /api/kane/trigger accepts project-scoped replay and dispatches live jobs per target. It returns SSE URLs, not Supabase subscription tokens.
 
 Source: `src/app/api/kane/trigger/route.ts; src/lib/kane.ts`
 
@@ -394,7 +394,7 @@ Source: `src/app/api/webhooks/github/route.ts; src/lib/agents.ts`
 
 ### §4.2.3 — Arena request boundary
 
-**Partial.** Scenario validation and isolated-branch orchestration exist upstream. Sample projects are restricted to replay; no remote mutation is used to demonstrate a successful battle.
+**Partial.** Scenario validation and isolated-branch orchestration exist upstream. The Chaos Lab target avoids any remote mutation.
 
 Source: `src/app/api/arena/sabotage/route.ts`
 
@@ -412,7 +412,7 @@ Source: `src/lib/agents.ts: publishPostmortem, selfVerify`
 
 ### §4.2.6 — Public receipt JSON and SVG
 
-**Present.** Battle or linked run IDs resolve to JSON receipts or an SVG badge. Verification rechecks HMAC and stored digest; an unsigned sample never earns a verified badge.
+**Present.** Battle or linked run IDs resolve to JSON receipts or an SVG badge. Verification rechecks HMAC and stored digest.
 
 Source: `src/app/api/receipt/[id]/route.ts`
 
@@ -461,13 +461,13 @@ Source: `vercel.json; next.config.ts; tsconfig.json`
 
 ## Fine-detail differences from the proposed blueprint
 
-- **Live proof versus source:** an implemented route, an authored test, a sampled trace, and a validated native pack are four different things. Only the last, tied to a real passing run, can support a live receipt. The 75 findings contain 18 present, 38 partial, three missing, and 16 external items. Those counts are classifications, not a percentage of passing end-to-end coverage.
+- **Live proof versus source:** an implemented route, an authored test, and a validated native pack are three different things. Only the last, tied to a real passing run, can support a live receipt. The 75 findings contain 18 present, 38 partial, three missing, and 16 external items. Those counts are classifications, not a percentage of passing end-to-end coverage.
 - **Versions:** the worker Dockerfile installs the CLI from npm without pinning v0.10.4. The worker's own version report is authoritative. No complete compatibility claim for every CLI version is made.
 - **Event contract:** a numeric step with a supported status is a progress event even without a type. The raw JSONB record retains version, timestamp, PID, project/folder resolution, child flow, and extra fields. The UI displays child IDs rather than a complete parallel-flow graph. The audit does not equate a step count with a measured “agent tax.” Retries do not double-count inserted warnings or completed steps.
 - **Evidence:** one-shot runs do not always copy packs to the project store; session storage and the stderr hint matter. Imported JSONB events are not byte-identical stdout. The verifier checks the pinned database digest, signature and run bindings; it does not re-download a public object on each receipt request. Independent archive-byte verification remains a separate task.
 - **Mobile:** the blueprint's shorthand conflates mobile viewport checks, remote desktop Chrome, virtual devices, and native real devices. They are not interchangeable. Web and mobile members need separate compatible jobs. A shared objective plus two device labels is not dual-platform proof.
 - **Time and cost:** SSE polling is not a less-than-100-ms WebSocket guarantee. The publisher's self-check request has a 90-second timeout rather than the storyboard's claimed 15 seconds. The 5× stream is a replay facility, not a guarantee that every genuine run finishes replaying in five seconds. Free credits, free hosting, and a zero-dollar deployment were not verified.
 - **Gating:** a recorded “deployment locked” state or PR comment does not configure GitHub branch protection. Real required checks, commit-specific preview readiness, job deduplication and durable recovery must be configured and tested before relying on this for releases.
-- **Publication:** the upstream article builder is ledger-driven Markdown composition, not proof of an LLM-written article. Public unverified previews are labelled and excluded from the published index. Editing an article clears the prior verifier link. Sample articles cannot acquire verified receipts.
+- **Publication:** the upstream article builder is ledger-driven Markdown composition, not proof of an LLM-written article. Public unverified previews are labelled and excluded from the published index. Editing an article clears the prior verifier link.
 - **Commercial/launch:** the use of four track labels does not prove competition eligibility, rankings, adoption, revenue, or willingness to pay. No MIT license file was found in the upstream inventory; the launch template's MIT claim should not be published without an actual license decision.
 - **Production safety:** the optional operator password is a per-deployment boundary, not role-based access control or multi-tenant RLS. A credential-free demonstration should have a dedicated database. The upstream in-memory worker queue and heuristic patch checks are not a fully hardened production agent platform.

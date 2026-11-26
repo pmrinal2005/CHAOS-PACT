@@ -66,7 +66,6 @@ export function Publishing() {
   // Only a battle Kane re-verified to exit 0 after a repair can be written up.
   const eligible = projectBattles.filter(
     (b) =>
-      b.mode !== "sample_replay" &&
       b.state === "REFEREE_PASS" &&
       b.attempts > 0 &&
       !postmortems.some((p) => p.battleId === b.id),
@@ -370,10 +369,7 @@ export function Publishing() {
               </a>
               <button
                 className="btn primary"
-                disabled={
-                  project.id === "c0aa5000-0000-4000-8000-000000000001" ||
-                  !system?.worker
-                }
+                disabled={!system?.worker}
                 title="Self-verification requires a live project and a configured worker."
                 onClick={async () => {
                   const r = await selfVerify(edit);

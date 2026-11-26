@@ -1,4 +1,3 @@
-import { SAMPLE_PROJECT_ID } from "@/lib/sample-workspace";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -97,7 +96,6 @@ export function Arena() {
   const [openHistory, setOpenHistory] = useState("");
   const battle =
     projectBattles.find((b) => b.id === selected) || projectBattles[0];
-  const sample = project.id === SAMPLE_PROJECT_ID;
   const step = battle ? stageIndex(battle) : -1;
   // Only stages that actually happened are marked; a first-time pass skips the repair loop.
   const occurred = battle
@@ -166,42 +164,7 @@ export function Arena() {
         description="Red team breaks an isolated branch. Kane CLI referees. Blue team heals under audit."
       />
       <div className="page-content">
-        {sample ? (
-          <div className="panel sample-arena-controls">
-            <div>
-              <span className="eyebrow gold">ARENA REPLAY</span>
-              <h3>Inspect a verification loop</h3>
-              <p>
-                Follow a sample regression from detection to repair. No branches
-                are changed.
-              </p>
-            </div>
-            <label className="field">
-              Battle scenario
-              <select
-                value={battle?.id || ""}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {projectBattles.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.label} · {battleTitle(b)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="btn primary"
-              disabled={!battle?.beforeRunId}
-              onClick={() =>
-                battle?.beforeRunId &&
-                go("theater", { id: battle.beforeRunId, replay: "1" })
-              }
-            >
-              <Play size={13} />
-              Replay battle
-            </button>
-          </div>
-        ) : (
+        {(
           <>
             {missing.length > 0 && (
               <div className="notice-banner" role="status">
@@ -488,8 +451,7 @@ export function Arena() {
                 <Sparkles size={12} /> Trigger Blue-Team repair
               </button>
             )}
-            {!sample &&
-              battle?.state === "REFEREE_PASS" &&
+            {battle?.state === "REFEREE_PASS" &&
               battle.attempts > 0 &&
               !post && (
                 <button

@@ -558,19 +558,6 @@ export function RunTheater() {
       .then((d) => {
         if (cancelled) return;
         setDetail(d);
-        if (loadError && d.run.trigger === "sample_replay" && wantsReplay) {
-          setStream("replay");
-          d.events.forEach((event, i) =>
-            timers.push(
-              window.setTimeout(() => {
-                if (cancelled) return;
-                setEvents((old) => [...old, event]);
-                if (i === d.events.length - 1) setStream("idle");
-              }, i * 160),
-            ),
-          );
-          return;
-        }
         const live = runActive(d.run);
         if (!live && !(wantsReplay && d.events.length)) {
           setEvents(d.events);
@@ -1013,24 +1000,21 @@ export function RunTheater() {
                   <button
                     className="btn secondary compact"
                     onClick={async () => {
-                      if (run.trigger !== "sample_replay")
-                        await act(
-                          () =>
-                            api("/api/agent/heal", {
-                              json: {
-                                battleId: run.battleId,
-                                failedRunId: run.id,
-                              },
-                            }),
-                          "Blue-Team healer engaged",
-                        );
+                      await act(
+                        () =>
+                          api("/api/agent/heal", {
+                            json: {
+                              battleId: run.battleId,
+                              failedRunId: run.id,
+                            },
+                          }),
+                        "Blue-Team healer engaged",
+                      );
                       go("arena", { id: run.battleId! });
                     }}
                   >
                     <Sparkles size={12} />
-                    {run.trigger === "sample_replay"
-                      ? "Inspect repair timeline"
-                      : "Send to Blue-Team Healer"}
+                    Send to Blue-Team Healer
                   </button>
                 ) : (
                   <p className="small-note muted">
@@ -1063,28 +1047,7 @@ export function RunTheater() {
         </div>
       </div>
       <div className="theater-actions">
-        {run.trigger === "sample_replay" ? (
-          <button
-            className="btn secondary compact"
-            disabled={!detail}
-            onClick={() =>
-              downloadFile(
-                `${run.label}.sample.json`,
-                JSON.stringify(
-                  {
-                    source: "illustrative replay, not sealed evidence",
-                    ...detail,
-                  },
-                  null,
-                  2,
-                ),
-              )
-            }
-          >
-            <ArrowDownToLine size={13} />
-            Export sample trace
-          </button>
-        ) : evidence?.packUrl ? (
+        {evidence?.packUrl ? (
           <a
             className="btn secondary compact"
             href={evidence.packUrl}
@@ -1118,14 +1081,10 @@ export function RunTheater() {
         <button
           className="btn secondary compact"
           disabled={runActive(run) || (!run.objective && !run.testmdPath)}
-          onClick={
-            run.trigger === "sample_replay"
-              ? () => setReplayKey((k) => k + 1)
-              : rerun
-          }
+          onClick={rerun}
         >
           <Play size={13} />
-          {run.trigger === "sample_replay" ? "Replay timeline" : "Re-run live"}
+          Re-run live
         </button>
         <button className="btn primary compact" onClick={() => setShare(true)}>
           <Link size={13} />
